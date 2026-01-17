@@ -1,18 +1,208 @@
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Geography Quiz (QR Join, Click Next)</title>
 
-<canvas id="qrcode" width="250" height="250" style="border:1px solid #ccc"></canvas>
-<div id="qrStatus"></div>
+  <!-- QR generator library (reliable CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 820px; margin: 0 auto; padding: 18px; background:#f6f7fb; }
+    .card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+    h1 { margin: 0 0 8px; }
+    #join-screen { text-align:center; }
+    #qrcode { display:inline-block; padding: 10px; background:#fff; border-radius: 12px; border:1px solid #eee; margin: 10px 0; }
+    #qrStatus { color:#666; font-size: 14px; margin-top: 6px; }
+    #quiz-container { display:none; }
+
+    .meta { display:flex; justify-content:space-between; color:#666; font-size: 14px; margin-bottom: 8px; }
+    .question { font-size: 20px; margin: 10px 0 10px; }
+    ul { list-style:none; padding:0; margin: 0; }
+    .option { padding: 12px 12px; border: 1px solid #e5e7eb; border-radius: 10px; margin: 10px 0; cursor:pointer; background:#fafafa; }
+    .option:hover { background:#f1f5ff; }
+    .option.disabled { cursor: default; opacity: .9; }
+    .option.correct { background:#e8f7ee; border-color:#2ecc71; }
+    .option.incorrect { background:#fdecec; border-color:#e74c3c; }
+
+    .explanation { display:none; margin-top: 12px; padding: 12px; border-left: 4px solid #2ecc71; background:#f2fbf5; border-radius: 10px; color:#1f6b3c; }
+
+    .actions { margin-top: 14px; display:flex; gap: 10px; justify-content:flex-end; }
+    button { border:0; border-radius: 10px; padding: 11px 14px; cursor:pointer; font-weight: 600; }
+    .primary { background:#4f46e5; color:#fff; }
+    .primary:disabled { background:#b8b5ff; cursor:not-allowed; }
+    .secondary { background:#eef2ff; color:#3730a3; }
+
+    #results { display:none; text-align:center; }
+    #score { font-size: 40px; font-weight: 800; margin: 8px 0; color:#111827; }
+    .small { color:#666; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <div id="join-screen" class="card">
+    <h1>Geography Quiz</h1>
+    <div class="small">Scan the QR code to open this quiz on your phone.</div>
+    <div id="qrcode" aria-label="QR code"></div>
+    <div id="qrStatus"></div>
+    <div class="actions" style="justify-content:center;">
+      <button class="primary" onclick="startQuiz()">Start quiz</button>
+    </div>
+    <div class="small" style="margin-top:10px;">Tip: If QR still doesn't show, refresh the page (Ctrl/Cmd+Shift+R).</div>
+  </div>
+
+  <div id="quiz-container" class="card">
+    <div id="quiz">
+      <div class="meta">
+        <div>Question <span id="qnum">1</span>/<span id="qtotal">10</span></div>
+        <div>Score: <span id="scoreLive">0</span></div>
+      </div>
+      <div id="question" class="question"></div>
+      <ul id="options"></ul>
+      <div id="explanation" class="explanation"></div>
+      <div class="actions">
+        <button class="secondary" onclick="restart()">Restart</button>
+        <button id="nextBtn" class="primary" onclick="nextQuestion()" disabled>Next</button>
+      </div>
+    </div>
+
+    <div id="results">
+      <h2>Finished</h2>
+      <div id="score"></div>
+      <div class="small">Refresh or press Restart to try again.</div>
+      <div class="actions" style="justify-content:center;">
+        <button class="primary" onclick="restart()">Play again</button>
+      </div>
+    </div>
+  </div>
 
 <script>
-window.addEventListener('load', () => {
-  const canvas = document.getElementById('qrcode');
-  const status = document.getElementById('qrStatus');
+  // 10 questions from the earlier geography_quiz CSV
+  const quizData = [
+    { q: "What is the capital of France?", opts: ["London", "Paris", "Berlin", "Madrid"], correct: 1, exp: "Paris is the capital and largest city of France." },
+    { q: "Which continent is the largest by land area?", opts: ["Asia", "Africa", "North America", "Europe"], correct: 0, exp: "Asia covers about 30% of Earth's land area." },
+    { q: "What is the longest river in the world?", opts: ["Amazon River", "Nile River", "Yangtze River", "Mississippi River"], correct: 1, exp: "The Nile River flows through northeastern Africa." },
+    { q: "Which country has the most population?", opts: ["China", "United States", "India", "Indonesia"], correct: 2, exp: "India surpassed China in 2023 as the most populous nation." },
+    { q: "What is the smallest country by land area?", opts: ["Monaco", "Nauru", "Tuvalu", "Vatican City"], correct: 3, exp: "Vatican City is an enclave within Rome, Italy." },
+    { q: "Which ocean is the largest?", opts: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean", "Arctic Ocean"], correct: 0, exp: "The Pacific Ocean covers more than 30% of Earth's surface." },
+    { q: "Mount Everest is located in which mountain range?", opts: ["Andes", "Himalayas", "Rockies", "Alps"], correct: 1, exp: "It forms the border between Nepal and China." },
+    { q: "What is the capital of Australia?", opts: ["Sydney", "Melbourne", "Canberra", "Perth"], correct: 2, exp: "Canberra was chosen as a compromise between Sydney and Melbourne." },
+    { q: "Which desert is the largest hot desert?", opts: ["Sahara Desert", "Gobi Desert", "Kalahari Desert", "Arabian Desert"], correct: 0, exp: "It spans much of northern Africa." },
+    { q: "How many continents are there?", opts: ["5", "7", "6", "8"], correct: 1, exp: "The seven continents are Asia, Africa, North America, South America, Antarctica, Europe, and Australia." }
+  ];
 
-  if (!canvas) { status.textContent = "Missing canvas#qrcode in HTML."; return; }
-  if (!window.QRCode) { status.textContent = "QRCode library did not load."; return; }
+  let idx = 0;
+  let score = 0;
+  let answered = false;
 
-  QRCode.toCanvas(canvas, window.location.href, { width: 250 }, (err) => {
-    status.textContent = err ? ("QR error: " + err.message) : "";
-  });
-});
+  function renderQR() {
+    const holder = document.getElementById('qrcode');
+    const status = document.getElementById('qrStatus');
+    holder.innerHTML = '';
+
+    if (!window.QRCode) {
+      status.textContent = 'QRCode library did not load.';
+      return;
+    }
+
+    new QRCode(holder, {
+      text: window.location.href,
+      width: 220,
+      height: 220,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+
+    status.textContent = '';
+  }
+
+  function startQuiz() {
+    document.getElementById('join-screen').style.display = 'none';
+    document.getElementById('quiz-container').style.display = 'block';
+    document.getElementById('qtotal').textContent = String(quizData.length);
+    idx = 0; score = 0;
+    document.getElementById('scoreLive').textContent = '0';
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('quiz').style.display = 'block';
+    loadQuestion();
+  }
+
+  function loadQuestion() {
+    answered = false;
+    const q = quizData[idx];
+
+    document.getElementById('qnum').textContent = String(idx + 1);
+    document.getElementById('question').textContent = q.q;
+
+    const ul = document.getElementById('options');
+    ul.innerHTML = '';
+
+    q.opts.forEach((text, optIndex) => {
+      const li = document.createElement('li');
+      li.className = 'option';
+      li.textContent = String.fromCharCode(65 + optIndex) + '. ' + text;
+      li.addEventListener('click', () => choose(optIndex, li));
+      ul.appendChild(li);
+    });
+
+    const exp = document.getElementById('explanation');
+    exp.style.display = 'none';
+    exp.textContent = '';
+
+    const nextBtn = document.getElementById('nextBtn');
+    nextBtn.disabled = true;
+    nextBtn.textContent = (idx === quizData.length - 1) ? 'Finish' : 'Next';
+  }
+
+  function choose(optIndex, element) {
+    if (answered) return;
+    answered = true;
+
+    const q = quizData[idx];
+    const all = Array.from(document.querySelectorAll('#options .option'));
+
+    all.forEach(li => li.classList.add('disabled'));
+
+    if (optIndex === q.correct) {
+      element.classList.add('correct');
+      score += 1;
+      document.getElementById('scoreLive').textContent = String(score);
+    } else {
+      element.classList.add('incorrect');
+      all[q.correct].classList.add('correct');
+    }
+
+    const exp = document.getElementById('explanation');
+    exp.textContent = q.exp;
+    exp.style.display = 'block';
+
+    document.getElementById('nextBtn').disabled = false;
+  }
+
+  function nextQuestion() {
+    if (!answered) return;
+    idx += 1;
+    if (idx >= quizData.length) {
+      showResults();
+    } else {
+      loadQuestion();
+    }
+  }
+
+  function showResults() {
+    document.getElementById('quiz').style.display = 'none';
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('score').textContent = score + ' / ' + quizData.length;
+  }
+
+  function restart() {
+    document.getElementById('quiz-container').style.display = 'none';
+    document.getElementById('join-screen').style.display = 'block';
+    renderQR();
+  }
+
+  window.addEventListener('load', renderQR);
 </script>
+
+</body>
+</html>
