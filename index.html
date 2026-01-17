@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geography Quiz - Self Paced</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #333; min-height: 100vh; }
+    #join-screen { text-align: center; padding: 40px; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-top: 5vh; }
+    #qrcode { margin: 20px auto; display: block; border: 8px solid #fff; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+    #quiz-container { display: none; }
+    .question-card { background: white; margin: 20px 0; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; animation: fadeIn 0.5s ease; }
+    .question-card h2 { color: #667eea; margin-bottom: 25px; font-size: 1.5rem; }
+    .options { list-style: none; padding: 0; max-width: 600px; margin: 0 auto; }
+    .option { margin: 12px 0; padding: 18px; background: #f8f9ff; border: 2px solid #e1e8ff; border-radius: 12px; cursor: pointer; transition: all 0.2s; font-size: 1.1rem; text-align: left; display: flex; align-items: center; }
+    .option:before { content: ''; display: inline-block; width: 20px; height: 20px; border: 2px solid #cbd5e0; border-radius: 50%; margin-right: 15px; transition: all 0.2s; }
+    .option:hover { background: #edf2f7; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    
+    /* State Styles */
+    .option.selected { background: #4CAF50; color: white; border-color: #4CAF50; }
+    .option.selected:before { border-color: white; background: white; }
+    .option.correct { background: #4CAF50 !important; color: white !important; border-color: #4CAF50 !important; }
+    .option.incorrect { background: #ef5350 !important; color: white !important; border-color: #ef5350 !important; }
+    .option.disabled { pointer-events: none; opacity: 0.7; }
+
+    .explanation { background: #e8f5e8; padding: 15px; border-radius: 8px; margin-top: 20px; font-style: italic; color: #2e7d32; display: none; border-left: 5px solid #4CAF50; text-align: left; }
+    
+    .next-btn { background: #ff6b6b; color: white; border: none; padding: 16px 40px; border-radius: 50px; cursor: pointer; font-size: 1.2rem; font-weight: bold; margin-top: 30px; transition: all 0.3s; box-shadow: 0 5px 15px rgba(255,107,107,0.4); display: inline-block; }
+    .next-btn:hover { background: #ff5252; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,107,107,0.5); }
+    .next-btn:disabled { background: #cbd5e0; cursor: not-allowed; transform: none; box-shadow: none; }
+    
+    #results { background: white; padding: 50px; border-radius: 20px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.2); display: none; margin-top: 10vh; }
+    #score-display { font-size: 5rem; color: #667eea; font-weight: bold; margin: 20px 0; }
+    .timer { font-size: 2rem; color: #ff6b6b; font-weight: bold; margin-bottom: 10px; }
+    
+    h1 { color: #333; margin-bottom: 10px; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+  <!-- JOIN SCREEN -->
+  <div id="join-screen">
+    <h1>🌍 Geography Quiz Challenge</h1>
+    <p>Scan the QR code to play on your phone!</p>
+    <canvas id="qrcode"></canvas>
+    <div class="timer" id="countdown">10</div>
+    <p id="join-text" style="color: #666; margin-top: 10px;">Waiting for players...</p>
+    <button class="next-btn" onclick="startQuiz()" style="margin-top: 20px; background: #667eea;">Start Quiz Now</button>
+  </div>
+
+  <!-- QUIZ CONTAINER -->
+  <div id="quiz-container">
+    <div class="question-card" id="current-question-card">
+      <div style="text-align: right; color: #999; font-size: 0.9rem;">Question <span id="q-number">1</span>/10</div>
+      <h2 id="question-text">Loading...</h2>
+      <ul class="options" id="options-list"></ul>
+      <div class="explanation" id="explanation"></div>
+      <button class="next-btn" id="next-btn" onclick="nextQuestion()" disabled>Next Question →</button>
+    </div>
+    
+    <!-- RESULTS SCREEN -->
+    <div id="results">
+      <h2>🏆 Quiz Complete!</h2>
+      <div id="score-display">0/10</div>
+      <p>Thanks for playing!</p>
+      <button class="next-btn" onclick="location.reload()">Play Again</button>
+    </div>
+  </div>
+
+  <script>
+    const quizData = [
+      {q: "What is the capital of France?", opts: ["London", "Paris", "Berlin", "Madrid"], correct: 1, exp: "Paris is the capital and largest city of France."},
+      {q: "Which continent is the largest by land area?", opts: ["Asia", "Africa", "North America", "Europe"], correct: 0, exp: "Asia covers about 30% of Earth's land area."},
+      {q: "What is the longest river in the world?", opts: ["Amazon River", "Nile River", "Yangtze River", "Mississippi River"], correct: 1, exp: "The Nile River flows through northeastern Africa."},
+      {q: "Which country has the most population?", opts: ["China", "United States", "India", "Indonesia"], correct: 2, exp: "India surpassed China in 2023 as the most populous nation."},
+      {q: "What is the smallest country by land area?", opts: ["Monaco", "Nauru", "Tuvalu", "Vatican City"], correct: 3, exp: "Vatican City is an enclave within Rome, Italy."},
+      {q: "Which ocean is the largest?", opts: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean", "Arctic Ocean"], correct: 0, exp: "The Pacific Ocean covers more than 30% of Earth's surface."},
+      {q: "Mount Everest is located in which mountain range?", opts: ["Andes", "Himalayas", "Rockies", "Alps"], correct: 1, exp: "It forms the border between Nepal and China."},
+      {q: "What is the capital of Australia?", opts: ["Sydney", "Melbourne", "Canberra", "Perth"], correct: 2, exp: "Canberra was chosen as a compromise between Sydney and Melbourne."},
+      {q: "Which desert is the largest hot desert?", opts: ["Sahara Desert", "Gobi Desert", "Kalahari Desert", "Arabian Desert"], correct: 0, exp: "It spans much of northern Africa."},
+      {q: "How many continents are there?", opts: ["5", "7", "6", "8"], correct: 1, exp: "The seven continents are Asia, Africa, North America, South America, Antarctica, Europe, and Australia."}
+    ];
+
+    let currentQ = 0, score = 0, hasAnswered = false;
+
+    // 1. Generate QR Code pointing to current page URL
+    QRCode.toCanvas(document.getElementById('qrcode'), window.location.href, { width: 200, margin: 2 }, function (error) {
+      if (error) console.error(error);
+    });
+
+    // 2. Simple 10s Countdown on Join Screen
+    let timeLeft = 10;
+    const countdownEl = document.getElementById('countdown');
+    const timer = setInterval(() => {
+      timeLeft--;
+      countdownEl.textContent = timeLeft;
+      if (timeLeft <= 0) {
+        clearInterval(timer);
+        document.getElementById('join-text').textContent = "Ready to start!";
+      }
+    }, 1000);
+
+    // 3. Start Game
+    function startQuiz() {
+      document.getElementById('join-screen').style.display = 'none';
+      document.getElementById('quiz-container').style.display = 'block';
+      loadQuestion();
+    }
+
+    // 4. Load Current Question
+    function loadQuestion() {
+      if (currentQ >= quizData.length) {
+        showResults();
+        return;
+      }
+      
+      const data = quizData[currentQ];
+      hasAnswered = false;
+      
+      // Update Text
+      document.getElementById('q-number').textContent = currentQ + 1;
+      document.getElementById('question-text').textContent = data.q;
+      document.getElementById('explanation').style.display = 'none';
+      
+      // Reset Next Button
+      const nextBtn = document.getElementById('next-btn');
+      nextBtn.disabled = true;
+      nextBtn.textContent = currentQ === quizData.length - 1 ? 'Finish Quiz' : 'Next Question →';
+
+      // Generate Options
+      const optsList = document.getElementById('options-list');
+      optsList.innerHTML = '';
+      
+      data.opts.forEach((optText, idx) => {
+        const li = document.createElement('li');
+        li.className = 'option';
+        li.textContent = optText;
+        li.onclick = () => handleAnswerClick(idx, li);
+        optsList.appendChild(li);
+      });
+    }
+
+    // 5. Handle Answer Selection
+    function handleAnswerClick(selectedIndex, element) {
+      if (hasAnswered) return; // Prevent multiple clicks
+      
+      hasAnswered = true;
+      const data = quizData[currentQ];
+      const allOpts = document.querySelectorAll('.option');
+      
+      // Check Correctness
+      if (selectedIndex === data.correct) {
+        element.classList.add('correct');
+        score++;
+      } else {
+        element.classList.add('incorrect');
+        // Highlight the correct answer automatically
+        allOpts[data.correct].classList.add('correct');
+      }
+      
+      // Disable all options visually
+      allOpts.forEach(opt => opt.classList.add('disabled'));
+      
+      // Show Explanation
+      const expDiv = document.getElementById('explanation');
+      expDiv.textContent = data.exp;
+      expDiv.style.display = 'block';
+      
+      // Enable Next Button
+      document.getElementById('next-btn').disabled = false;
+    }
+
+    // 6. Go to Next
+    function nextQuestion() {
+      currentQ++;
+      loadQuestion();
+    }
+
+    // 7. Show Final Screen
+    function showResults() {
+      document.getElementById('current-question-card').style.display = 'none';
+      document.getElementById('results').style.display = 'block';
+      document.getElementById('score-display').textContent = `${score} / ${quizData.length}`;
+    }
+  </script>
+</body>
+</html>
