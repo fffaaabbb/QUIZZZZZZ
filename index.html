@@ -36,13 +36,12 @@
     .primary { background: #4f46e5; color: #fff; }
     .primary:disabled { background: #b8b5ff; cursor: not-allowed; }
     .secondary { background: #eef2ff; color: #3730a3; }
-    .danger { background: #fee2e2; color: #991b1b; }
 
     #results { display: none; text-align: center; }
     #score { font-size: 40px; font-weight: 800; margin: 8px 0; color: #111827; }
 
     .field { margin-top: 10px; display: grid; gap: 6px; justify-content: center; }
-    input[type="text"]{ padding: 10px; border-radius: 10px; border: 1px solid #e5e7eb; width: min(360px, 90vw); font-size: 16px; }
+    input[type="text"]{ padding: 10px; border-radius: 10px; border: 1px solid #e5e7eb; width: min(360px, 90vw); font-size: 16px; text-align: center; }
     .row { display:flex; gap:10px; justify-content:center; flex-wrap: wrap; }
     .pill { font-size: 12px; color:#3730a3; background:#eef2ff; padding: 3px 8px; border-radius: 999px; }
 
@@ -50,7 +49,6 @@
     #leaderboard { font-size: 14px; color: #111827; line-height: 1.5; }
     .lb-row { display:flex; justify-content:space-between; gap:12px; padding: 6px 0; border-bottom: 1px solid #f1f1f1; }
     .lb-row:last-child { border-bottom: 0; }
-
     .hint { max-width: 680px; margin: 8px auto 0; }
   </style>
 </head>
@@ -59,17 +57,19 @@
   <div id="join-screen" class="card join-screen">
     <h1>Geography Quiz</h1>
 
-    <div class="small">The QR code is constant (for your YouTube video). To play together, one person creates a game code and everyone joins that code.</div>
+    <div class="small">
+      The QR code is constant (for your YouTube video). To play together, one person creates a numeric game code and everyone joins that same code.
+    </div>
 
     <div id="qrcode" aria-label="QR code"></div>
     <div id="qrStatus"></div>
 
     <div class="field">
       <label class="small" for="playerName">Your name</label>
-      <input id="playerName" type="text" placeholder="e.g. Pat" autocomplete="nickname" />
+      <input id="playerName" type="text" placeholder="e.g. Pat" autocomplete="nickname" style="text-align:left;" />
 
-      <label class="small" for="gameInput">Game code</label>
-      <input id="gameInput" type="text" placeholder="Press Create New Game (or type code)" autocapitalize="characters" />
+      <label class="small" for="gameInput">Game code (format 123-456)</label>
+      <input id="gameInput" type="text" placeholder="Create a new game (or type 123-456)" inputmode="numeric" />
 
       <div class="small">Current game: <span id="gameLabel" class="pill">None</span></div>
     </div>
@@ -81,7 +81,7 @@
     </div>
 
     <div class="small hint">
-      Tip: Share the game code (shown above) with your friends. Everyone scans the same QR and types the same code to join the same live leaderboard.
+      Tip: Share the game code shown above. Everyone scans the same QR and types the same code to join the same live leaderboard.
     </div>
   </div>
 
@@ -138,16 +138,14 @@
       { q: "How many continents are there?", opts: ["5", "7", "6", "8"], correct: 1, exp: "The seven continents are Asia, Africa, North America, South America, Antarctica, Europe, and Australia." }
     ];
 
-    // IMPORTANT: QR must be constant, so we DO NOT put gameId in the URL.
-    // Everyone scans the same QR and then types the same game code to join.
-    let gameId = "";
+    // Constant QR code: no gameId in URL. Everyone scans the same URL and types the code.
+    let gameCode = ""; // displayed code like "123-456"
 
     let idx = 0;
     let score = 0;
     let answered = false;
     let myName = "";
 
-    // Socket.IO (rooms are created by joining any room name) [web:93]
     const socket = io(SOCKET_SERVER_URL, { transports: ["websocket", "polling"] });
 
     socket.on("connect", () => setLeaderboardText("Connected. Create or join a game code."));
@@ -186,33 +184,43 @@
       }[c]));
     }
 
-    function makeGameId() {
-      return Math.random().toString(36).slice(2, 8).toUpperCase();
+    // Generates "123-456" (digits only, fixed length)
+    function makeGameCode() {
+      const six = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
+      return six.slice(0, 3) + "-" + six.slice(3);
     }
 
+    // Accepts "123456" or "123-456" and normalizes to "123-456"
     function normalizeGameCode(code) {
-      return (code || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+      const digits = String(code || "").replace(/\D/g, "");
+      if (digits.length !== 6) return "";
+      return digits.slice(0, 3) + "-" + digits.slice(3);
+    }
+
+    // Use digits-only as the Socket.IO room id ("123456")
+    function roomIdFromGameCode(code) {
+      return String(code || "").replace(/\D/g, "");
     }
 
     function updateGameUI() {
-      document.getElementById("gameLabel").textContent = gameId ? gameId : "None";
-      document.getElementById("gamePill").textContent = gameId ? gameId : "";
+      document.getElementById("gameLabel").textContent = gameCode ? gameCode : "None";
+      document.getElementById("gamePill").textContent = gameCode ? gameCode : "";
       const gi = document.getElementById("gameInput");
-      if (gi && gameId && !gi.value) gi.value = gameId;
+      if (gi && gameCode && !gi.value) gi.value = gameCode;
     }
 
     function createNewGame() {
-      gameId = makeGameId();
-      document.getElementById("gameInput").value = gameId;
+      gameCode = makeGameCode();
+      document.getElementById("gameInput").value = gameCode;
       updateGameUI();
       setLeaderboardText("Game created. Share the code, then press Start quiz.");
     }
 
     function useEnteredGame() {
       const typed = normalizeGameCode(document.getElementById("gameInput").value);
-      if (!typed) { alert("Please enter a game code"); return; }
-      gameId = typed;
-      document.getElementById("gameInput").value = gameId;
+      if (!typed) { alert("Please enter a 6-digit code (123-456)"); return; }
+      gameCode = typed;
+      document.getElementById("gameInput").value = gameCode;
       updateGameUI();
       setLeaderboardText("Game selected. Press Start quiz.");
     }
@@ -245,18 +253,19 @@
       myName = (input.value || "").trim();
       if (!myName) { alert("Please enter your name"); return; }
 
-      // Must have a game code so multiple players can join the same room.
-      if (!gameId) {
-        // If they didn't press any button, treat "typed code" as the source
+      // Must have a game code
+      if (!gameCode) {
         const typed = normalizeGameCode(document.getElementById("gameInput").value);
-        if (!typed) { alert("Create a new game or type a game code first"); return; }
-        gameId = typed;
+        if (!typed) { alert("Create a new game or type a 6-digit game code first"); return; }
+        gameCode = typed;
       }
       updateGameUI();
 
+      const gameId = roomIdFromGameCode(gameCode);
+
       document.getElementById("whoami").textContent = myName;
 
-      // Join room for this gameId (Socket.IO rooms) [web:93]
+      // Join room
       socket.emit("joinGame", { gameId, playerName: myName });
 
       // Start UI
@@ -303,7 +312,8 @@
       nextBtn.textContent = (idx === quizData.length - 1) ? "Finish" : "Next";
 
       // Update progress even before answering
-      if (myName && gameId) {
+      if (myName && gameCode) {
+        const gameId = roomIdFromGameCode(gameCode);
         socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
       }
     }
@@ -326,7 +336,8 @@
       }
 
       // Emit live score update after each question
-      if (myName && gameId) {
+      if (myName && gameCode) {
+        const gameId = roomIdFromGameCode(gameCode);
         socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
       }
 
@@ -351,28 +362,36 @@
       document.getElementById("score").textContent = score + "/" + quizData.length;
 
       // Final push
-      if (myName && gameId) {
+      if (myName && gameCode) {
+        const gameId = roomIdFromGameCode(gameCode);
         socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: quizData.length });
       }
     }
 
     function restart() {
-      // Reset local quiz
       document.getElementById("quiz-container").style.display = "none";
       document.getElementById("join-screen").style.display = "block";
 
-      // Clear local session values (so new groups start fresh)
       idx = 0; score = 0; answered = false; myName = "";
       document.getElementById("playerName").value = "";
 
-      // Do NOT force a new game code, but also do not keep old one unless typed.
-      gameId = "";
+      // Do not keep old game by default (forces new groups to create/join a code)
+      gameCode = "";
       document.getElementById("gameInput").value = "";
       updateGameUI();
 
       setLeaderboardText("Connected. Create or join a game code.");
       renderQR();
     }
+
+    // Optional: live formatting while typing (turn "123456" into "123-456")
+    document.addEventListener("input", (e) => {
+      if (e.target && e.target.id === "gameInput") {
+        const digits = String(e.target.value || "").replace(/\D/g, "").slice(0, 6);
+        if (digits.length <= 3) e.target.value = digits;
+        else e.target.value = digits.slice(0,3) + "-" + digits.slice(3);
+      }
+    });
 
     window.addEventListener("load", () => {
       renderQR();
