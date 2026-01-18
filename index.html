@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Geography Quiz (QR Join + Live Leaderboard)</title>
+  <title>Geography Quiz + QR + Join + Live Leaderboard</title>
 
   <!-- QR generator library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -11,18 +11,22 @@
   <!-- Socket.IO client -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
+  <!-- Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/[email protected]/dist/confetti.browser.min.js"></script>
+
   <style>
     body { font-family: Arial, sans-serif; max-width: 820px; margin: 0 auto; padding: 18px; background: #f6f7fb; }
     .card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 6px 20px rgba(0,0,0,.08); margin-bottom: 14px; }
     h1 { margin: 0 0 8px; }
     .join-screen { text-align: center; }
     #qrcode { display: inline-block; padding: 10px; background: #fff; border-radius: 12px; border: 1px solid #eee; margin: 10px 0; }
-    #qrStatus { color:#666; font-size: 14px; margin-top: 6px; }
-    .small { color:#666; font-size: 14px; }
+    #qrStatus { color: #666; font-size: 14px; margin-top: 6px; }
+    .small { color: #666; font-size: 14px; }
     #quiz-container { display: none; }
 
-    .meta { display:flex; justify-content:space-between; color:#666; font-size: 14px; margin-bottom: 8px; gap: 10px; flex-wrap: wrap; }
+    .meta { display:flex; justify-content:space-between; color:#666; font-size:14px; margin-bottom:8px; gap:10px; flex-wrap:wrap; }
     .question { font-size: 20px; margin: 10px 0 10px; }
+
     ul { list-style: none; padding: 0; margin: 0; }
     .option { padding: 12px 12px; border: 1px solid #e5e7eb; border-radius: 10px; margin: 10px 0; cursor: pointer; background: #fafafa; user-select: none; }
     .option:hover { background: #f1f5ff; }
@@ -30,58 +34,49 @@
     .option.correct { background: #e8f7ee; border-color: #2ecc71; }
     .option.incorrect { background: #fdecec; border-color: #e74c3c; }
 
-    .explanation { display: none; margin-top: 12px; padding: 12px; border-left: 4px solid #2ecc71; background: #f2fbf5; border-radius: 10px; color: #1f6b3c; }
-    .actions { margin-top: 14px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .explanation { display:none; margin-top:12px; padding:12px; border-left:4px solid #2ecc71; background:#f2fbf5; border-radius:10px; color:#1f6b3c; }
+
+    .actions { margin-top: 14px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
     button { border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer; font-weight: 600; }
     .primary { background: #4f46e5; color: #fff; }
     .primary:disabled { background: #b8b5ff; cursor: not-allowed; }
     .secondary { background: #eef2ff; color: #3730a3; }
 
-    #results { display: none; text-align: center; }
+    #results { display:none; text-align:center; }
     #score { font-size: 40px; font-weight: 800; margin: 8px 0; color: #111827; }
 
-    .field { margin-top: 10px; display: grid; gap: 6px; justify-content: center; }
-    input[type="text"]{ padding: 10px; border-radius: 10px; border: 1px solid #e5e7eb; width: min(360px, 90vw); font-size: 16px; text-align: center; }
-    .row { display:flex; gap:10px; justify-content:center; flex-wrap: wrap; }
-    .pill { font-size: 12px; color:#3730a3; background:#eef2ff; padding: 3px 8px; border-radius: 999px; }
+    .field { margin-top:10px; display:grid; gap:6px; justify-content:center; }
+    input[type="text"] { padding:10px; border-radius:10px; border:1px solid #e5e7eb; width: min(320px, 90vw); font-size:16px; }
 
     #leaderboardBox { margin-top: 12px; }
     #leaderboard { font-size: 14px; color: #111827; line-height: 1.5; }
     .lb-row { display:flex; justify-content:space-between; gap:12px; padding: 6px 0; border-bottom: 1px solid #f1f1f1; }
     .lb-row:last-child { border-bottom: 0; }
-    .hint { max-width: 680px; margin: 8px auto 0; }
+    .pill { font-size:12px; color:#3730a3; background:#eef2ff; padding:3px 8px; border-radius:999px; }
+
+    #resultFX { margin-top: 12px; min-height: 60px; }
   </style>
 </head>
 
 <body>
   <div id="join-screen" class="card join-screen">
     <h1>Geography Quiz</h1>
-
-    <div class="small">
-      The QR code is constant (for your YouTube video). To play together, one person creates a numeric game code and everyone joins that same code.
-    </div>
-
+    <div class="small">Scan the QR code to open this quiz on your phone.</div>
     <div id="qrcode" aria-label="QR code"></div>
     <div id="qrStatus"></div>
 
     <div class="field">
       <label class="small" for="playerName">Your name</label>
-      <input id="playerName" type="text" placeholder="e.g. Pat" autocomplete="nickname" style="text-align:left;" />
-
-      <label class="small" for="gameInput">Game code (format 123-456)</label>
-      <input id="gameInput" type="text" placeholder="Create a new game (or type 123-456)" inputmode="numeric" />
-
-      <div class="small">Current game: <span id="gameLabel" class="pill">None</span></div>
+      <input id="playerName" type="text" placeholder="e.g. Pat" autocomplete="nickname" />
+      <div class="small">Game: <span id="gameLabel"></span></div>
     </div>
 
-    <div class="row" style="margin-top:10px;">
-      <button class="secondary" onclick="createNewGame()">Create new game</button>
-      <button class="secondary" onclick="useEnteredGame()">Join typed code</button>
+    <div class="actions" style="justify-content:center">
       <button class="primary" onclick="startQuiz()">Start quiz</button>
     </div>
 
-    <div class="small hint">
-      Tip: Share the game code shown above. Everyone scans the same QR and types the same code to join the same live leaderboard.
+    <div class="small" style="margin-top:10px;">
+      Tip: If QR still doesn't show, refresh (Ctrl/Cmd + Shift + R).
     </div>
   </div>
 
@@ -91,7 +86,6 @@
         <div>Question <span id="qnum">1</span>/<span id="qtotal">10</span></div>
         <div>Score <span id="scoreLive">0</span></div>
         <div>Player <span id="whoami" class="pill"></span></div>
-        <div>Game <span id="gamePill" class="pill"></span></div>
       </div>
 
       <div id="question" class="question"></div>
@@ -99,12 +93,12 @@
 
       <div id="leaderboardBox" class="card">
         <div style="font-weight:700; margin-bottom:6px;">Leaderboard</div>
-        <div id="leaderboard" class="small">Connecting…</div>
+        <div id="leaderboard" class="small">Connecting...</div>
       </div>
 
       <div id="explanation" class="explanation"></div>
 
-      <div class="actions" style="justify-content:flex-end;">
+      <div class="actions">
         <button class="secondary" onclick="restart()">Restart</button>
         <button id="nextBtn" class="primary" onclick="nextQuestion()" disabled>Next</button>
       </div>
@@ -113,17 +107,19 @@
     <div id="results">
       <h2>Finished!</h2>
       <div id="score"></div>
+      <div id="resultFX"></div>
       <div class="small">Refresh or press Restart to try again.</div>
-      <div class="actions" style="justify-content:center;">
+      <div class="actions" style="justify-content:center">
         <button class="primary" onclick="restart()">Play again</button>
       </div>
     </div>
   </div>
 
   <script>
-    // ---- CONFIG: your deployed Socket.IO server ----
+    // ---- CONFIG (same as your file) ----
+    // Must be https... for GitHub Pages to avoid mixed content blocking.
     const SOCKET_SERVER_URL = "https://quiz-leaderboard-server-1.onrender.com";
-    // ------------------------------------------------
+    // -----------------------------------
 
     const quizData = [
       { q: "What is the capital of France?", opts: ["London", "Paris", "Berlin", "Madrid"], correct: 1, exp: "Paris is the capital and largest city of France." },
@@ -138,19 +134,39 @@
       { q: "How many continents are there?", opts: ["5", "7", "6", "8"], correct: 1, exp: "The seven continents are Asia, Africa, North America, South America, Antarctica, Europe, and Australia." }
     ];
 
-    // Constant QR code: no gameId in URL. Everyone scans the same URL and types the code.
-    let gameCode = ""; // displayed code like "123-456"
+    // Game id in URL so all players join same room
+    const params = new URLSearchParams(location.search);
+    const gameId = params.get("game") || makeGameId();
+    document.getElementById("gameLabel").textContent = gameId;
+
+    function ensureGameParam() {
+      const p = new URLSearchParams(location.search);
+      if (!p.get("game")) {
+        const url = new URL(location.href);
+        url.searchParams.set("game", gameId);
+        history.replaceState({}, "", url.toString());
+      }
+    }
+    ensureGameParam();
 
     let idx = 0;
     let score = 0;
     let answered = false;
     let myName = "";
 
+    // Store latest leaderboard snapshot (used to decide current #1)
+    let latestLeaderboard = [];
+
+    // Socket.IO
     const socket = io(SOCKET_SERVER_URL, { transports: ["websocket", "polling"] });
 
-    socket.on("connect", () => setLeaderboardText("Connected. Create or join a game code."));
+    socket.on("connect", () => setLeaderboardText("Connected. Enter your name and press Start."));
     socket.on("connect_error", () => setLeaderboardText("Cannot reach leaderboard server."));
-    socket.on("leaderboardUpdate", (rows) => renderLeaderboard(rows));
+
+    socket.on("leaderboardUpdate", (rows) => {
+      latestLeaderboard = Array.isArray(rows) ? rows : [];
+      renderLeaderboard(rows);
+    });
 
     function setLeaderboardText(text) {
       const el = document.getElementById("leaderboard");
@@ -172,7 +188,7 @@
         return `
           <div class="lb-row">
             <div>${i + 1}. ${escapeHtml(r.name)}${me}</div>
-            <div><span class="pill">${r.score}</span> <span class="small">${progress}</span></div>
+            <div><span class="pill">${Number(r.score ?? 0)}</span> <span class="small">${escapeHtml(progress)}</span></div>
           </div>
         `;
       }).join("");
@@ -180,66 +196,29 @@
 
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, (c) => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       }[c]));
     }
 
-    // Generates "123-456" (digits only, fixed length)
-    function makeGameCode() {
-      const six = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
-      return six.slice(0, 3) + "-" + six.slice(3);
-    }
-
-    // Accepts "123456" or "123-456" and normalizes to "123-456"
-    function normalizeGameCode(code) {
-      const digits = String(code || "").replace(/\D/g, "");
-      if (digits.length !== 6) return "";
-      return digits.slice(0, 3) + "-" + digits.slice(3);
-    }
-
-    // Use digits-only as the Socket.IO room id ("123456")
-    function roomIdFromGameCode(code) {
-      return String(code || "").replace(/\D/g, "");
-    }
-
-    function updateGameUI() {
-      document.getElementById("gameLabel").textContent = gameCode ? gameCode : "None";
-      document.getElementById("gamePill").textContent = gameCode ? gameCode : "";
-      const gi = document.getElementById("gameInput");
-      if (gi && gameCode && !gi.value) gi.value = gameCode;
-    }
-
-    function createNewGame() {
-      gameCode = makeGameCode();
-      document.getElementById("gameInput").value = gameCode;
-      updateGameUI();
-      setLeaderboardText("Game created. Share the code, then press Start quiz.");
-    }
-
-    function useEnteredGame() {
-      const typed = normalizeGameCode(document.getElementById("gameInput").value);
-      if (!typed) { alert("Please enter a 6-digit code (123-456)"); return; }
-      gameCode = typed;
-      document.getElementById("gameInput").value = gameCode;
-      updateGameUI();
-      setLeaderboardText("Game selected. Press Start quiz.");
+    function makeGameId() {
+      return Math.random().toString(36).slice(2, 8).toUpperCase();
     }
 
     function renderQR() {
       const holder = document.getElementById("qrcode");
       const status = document.getElementById("qrStatus");
-      holder.innerHTML = "";
 
+      holder.innerHTML = "";
       if (!window.QRCode) {
         status.textContent = "QRCode library did not load.";
         return;
       }
 
-      // Constant QR code: always points to the same page URL (no game parameters).
-      const url = window.location.origin + window.location.pathname;
+      const url = new URL(window.location.href);
+      url.searchParams.set("game", gameId);
 
       new QRCode(holder, {
-        text: url,
+        text: url.toString(),
         width: 220,
         height: 220,
         correctLevel: QRCode.CorrectLevel.M
@@ -248,38 +227,33 @@
       status.textContent = "";
     }
 
+    window.addEventListener("load", renderQR);
+
     function startQuiz() {
       const input = document.getElementById("playerName");
       myName = (input.value || "").trim();
-      if (!myName) { alert("Please enter your name"); return; }
-
-      // Must have a game code
-      if (!gameCode) {
-        const typed = normalizeGameCode(document.getElementById("gameInput").value);
-        if (!typed) { alert("Create a new game or type a 6-digit game code first"); return; }
-        gameCode = typed;
+      if (!myName) {
+        alert("Please enter your name");
+        return;
       }
-      updateGameUI();
-
-      const gameId = roomIdFromGameCode(gameCode);
 
       document.getElementById("whoami").textContent = myName;
 
       // Join room
       socket.emit("joinGame", { gameId, playerName: myName });
 
-      // Start UI
       document.getElementById("join-screen").style.display = "none";
       document.getElementById("quiz-container").style.display = "block";
-      document.getElementById("qtotal").textContent = String(quizData.length);
 
+      document.getElementById("qtotal").textContent = String(quizData.length);
       idx = 0;
       score = 0;
       document.getElementById("scoreLive").textContent = "0";
+
       document.getElementById("results").style.display = "none";
       document.getElementById("quiz").style.display = "block";
 
-      // Push initial state so leaderboard shows them immediately
+      // Send initial state so you appear on the board immediately
       socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
 
       loadQuestion();
@@ -311,11 +285,8 @@
       nextBtn.disabled = true;
       nextBtn.textContent = (idx === quizData.length - 1) ? "Finish" : "Next";
 
-      // Update progress even before answering
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
-      }
+      // Update progress even before answering so board shows who is on what question
+      if (myName) socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
     }
 
     function choose(optIndex, element) {
@@ -332,14 +303,11 @@
         document.getElementById("scoreLive").textContent = String(score);
       } else {
         element.classList.add("incorrect");
-        all[q.correct].classList.add("correct");
+        if (all[q.correct]) all[q.correct].classList.add("correct");
       }
 
       // Emit live score update after each question
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
-      }
+      if (myName) socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
 
       const exp = document.getElementById("explanation");
       exp.textContent = q.exp;
@@ -350,53 +318,62 @@
 
     function nextQuestion() {
       if (!answered) return;
-
       idx += 1;
       if (idx >= quizData.length) showResults();
       else loadQuestion();
     }
 
+    // Winner logic: "currently #1" means your score equals the highest score
+    // in the latest leaderboard snapshot. If tied, all tied winners get confetti.
+    function getTopScore(rows) {
+      if (!Array.isArray(rows) || rows.length === 0) return null;
+      return rows.reduce((max, r) => Math.max(max, Number(r.score ?? 0)), -Infinity);
+    }
+
+    function fireWinnerConfetti() {
+      if (typeof confetti !== "function") return;
+      confetti({ particleCount: 160, spread: 70, origin: { y: 0.6 } });
+      setTimeout(() => confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 } }), 250);
+    }
+
+    function showLoserThumbsDown() {
+      const fx = document.getElementById("resultFX");
+      if (!fx) return;
+
+      fx.innerHTML = `
+        <div style="display:inline-flex; align-items:center; gap:10px; color:#b91c1c; font-weight:800;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" fill="currentColor"
+            class="bi bi-hand-thumbs-down" viewBox="0 0 16 16" aria-label="Thumbs down">
+            <path d="M8.864 15.674c-.956.24-1.843-.484-1.908-1.42-.072-1.05-.23-2.015-.428-2.59-.125-.36-.479-1.012-1.04-1.638-.557-.624-1.282-1.179-2.131-1.41C2.685 8.432 2 7.85 2 7V3c0-.845.682-1.464 1.448-1.546 1.07-.113 1.564-.415 2.068-.723l.048-.029c.272-.166.578-.349.97-.484C6.931.08 7.395 0 8 0h3.5c.937 0 1.599.478 1.934 1.064.164.287.254.607.254.913 0 .152-.023.312-.077.464.201.262.38.577.488.9.11.33.172.762.004 1.15.069.13.12.268.159.403.077.27.113.567.113.856s-.036.586-.113.856c-.035.12-.08.244-.138.363.394.571.418 1.2.234 1.733-.206.592-.682 1.1-1.2 1.272-.847.283-1.803.276-2.516.211a10 10 0 0 1-.443-.05 9.36 9.36 0 0 1-.062 4.51c-.138.508-.55.848-1.012.964z"/>
+          </svg>
+          <span>Not #1 this time</span>
+        </div>
+      `;
+    }
+
     function showResults() {
       document.getElementById("quiz").style.display = "none";
       document.getElementById("results").style.display = "block";
-      document.getElementById("score").textContent = score + "/" + quizData.length;
+      document.getElementById("score").textContent = `${score}/${quizData.length}`;
+
+      const fx = document.getElementById("resultFX");
+      if (fx) fx.innerHTML = "";
+
+      const topScore = getTopScore(latestLeaderboard);
+      const iAmWinner = (topScore !== null) && (score === topScore);
+
+      if (iAmWinner) fireWinnerConfetti();
+      else showLoserThumbsDown();
 
       // Final push
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: quizData.length });
-      }
+      if (myName) socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: quizData.length });
     }
 
     function restart() {
       document.getElementById("quiz-container").style.display = "none";
       document.getElementById("join-screen").style.display = "block";
-
-      idx = 0; score = 0; answered = false; myName = "";
-      document.getElementById("playerName").value = "";
-
-      // Do not keep old game by default (forces new groups to create/join a code)
-      gameCode = "";
-      document.getElementById("gameInput").value = "";
-      updateGameUI();
-
-      setLeaderboardText("Connected. Create or join a game code.");
       renderQR();
     }
-
-    // Optional: live formatting while typing (turn "123456" into "123-456")
-    document.addEventListener("input", (e) => {
-      if (e.target && e.target.id === "gameInput") {
-        const digits = String(e.target.value || "").replace(/\D/g, "").slice(0, 6);
-        if (digits.length <= 3) e.target.value = digits;
-        else e.target.value = digits.slice(0,3) + "-" + digits.slice(3);
-      }
-    });
-
-    window.addEventListener("load", () => {
-      renderQR();
-      updateGameUI();
-    });
   </script>
 </body>
 </html>
