@@ -67,6 +67,10 @@
        ========================================================= -->
 </head>
 
+
+
+
+
 <body>
   <!-- =========================================================
        SECTION: JOIN SCREEN (QR + name + game code)
@@ -104,6 +108,12 @@
   <!-- =========================================================
        END JOIN SCREEN
        ========================================================= -->
+
+
+
+
+
+
 
   <!-- =========================================================
        SECTION: QUIZ CONTAINER (quiz + results)
@@ -207,6 +217,7 @@
 // =========================================================
 // SECTION: WINNER/LOSER FX (confetti + thumbs-down)
 // Confetti triggers ONLY when everyone has finished.
+// Also shows a finished counter while waiting.
 // =========================================================
 
 let awaitingFinalResults = false;
@@ -245,7 +256,22 @@ function showLoserThumbsDown() {
 function showWaitingMessage() {
   const fx = document.getElementById("resultFX");
   if (!fx) return;
-  fx.innerHTML = `<div class="small">Waiting for other players to finish…</div>`;
+
+  const rows = Array.isArray(latestLeaderboard) ? latestLeaderboard : [];
+  const total = rows.length;
+  const finished = rows.filter(r => Number(r.qIndex ?? 0) >= quizData.length).length;
+
+  if (total === 0) {
+    fx.innerHTML = `<div class="small">Waiting for other players to finish…</div>`;
+    return;
+  }
+
+  fx.innerHTML = `
+    <div class="small">
+      Waiting for other players to finish…<br>
+      <strong>${finished}</strong> / <strong>${total}</strong> finished
+    </div>
+  `;
 }
 
 function maybeFinalizeWinners() {
@@ -404,115 +430,153 @@ socket.on("leaderboardUpdate", (rows) => {
       status.textContent = "";
     }
 
-    // =========================================================
-    // SECTION: QUIZ FLOW
-    // =========================================================
-    function startQuiz() {
-      const input = document.getElementById("playerName");
-      myName = (input.value || "").trim();
-      if (!myName) {
-        alert("Please enter your name");
-        return;
-      }
 
-      if (!gameCode) {
-        const typed = normalizeGameCode(document.getElementById("gameInput").value);
-        if (!typed) {
-          alert("Create a new game or type a 6-digit game code first");
-          return;
-        }
-        gameCode = typed;
-      }
-      updateGameUI();
+// =========================================================
+// SECTION: PERSIST PLAYER NAME
+// =========================================================
+const NAME_STORAGE_KEY = "quiz_player_name";
 
-      const gameId = roomIdFromGameCode(gameCode);
-      document.getElementById("whoami").textContent = myName;
+function getSavedName() {
+  try {
+    return (localStorage.getItem(NAME_STORAGE_KEY) || "").trim();
+  } catch (e) {
+    return "";
+  }
+}
 
-      socket.emit("joinGame", { gameId, playerName: myName });
+function saveName(name) {
+  try {
+    localStorage.setItem(NAME_STORAGE_KEY, String(name || "").trim());
+  } catch (e) {}
+}
 
-      document.getElementById("join-screen").style.display = "none";
-      document.getElementById("quiz-container").style.display = "block";
-      document.getElementById("qtotal").textContent = String(quizData.length);
 
-      idx = 0;
-      score = 0;
-      document.getElementById("scoreLive").textContent = "0";
+// =========================================================
+// SECTION: QUIZ FLOW
+// =========================================================
+function startQuiz() {
+  const input = document.getElementById("playerName");
 
-      document.getElementById("results").style.display = "none";
-      document.getElementById("quiz").style.display = "block";
+  // Prefill from saved name if the input is empty
+  if (input && !input.value) {
+    const saved = getSavedName();
+    if (saved) input.value = saved;
+  }
 
-      socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
+  myName = (input?.value || "").trim();
+  if (!myName) {
+    alert("Please enter your name");
+    return;
+  }
 
-      loadQuestion();
+  // Save for next quiz on this same device/browser
+  saveName(myName);
+
+  // Must have a game code
+  if (!gameCode) {
+    const typed = normalizeGameCode(document.getElementById("gameInput").value);
+    if (!typed) {
+      alert("Create a new game or type a 6-digit game code first");
+      return;
     }
+    gameCode = typed;
+  }
+  updateGameUI();
 
-    function loadQuestion() {
-      answered = false;
+  const gameId = roomIdFromGameCode(gameCode);
+  document.getElementById("whoami").textContent = myName;
 
-      const q = quizData[idx];
-      document.getElementById("qnum").textContent = String(idx + 1);
-      document.getElementById("question").textContent = q.q;
+  // Join room
+  socket.emit("joinGame", { gameId, playerName: myName });
 
-      const ul = document.getElementById("options");
-      ul.innerHTML = "";
+  // Start UI
+  document.getElementById("join-screen").style.display = "none";
+  document.getElementById("quiz-container").style.display = "block";
+  document.getElementById("qtotal").textContent = String(quizData.length);
 
-      q.opts.forEach((text, optIndex) => {
-        const li = document.createElement("li");
-        li.className = "option";
-        li.textContent = String.fromCharCode(65 + optIndex) + ". " + text;
-        li.addEventListener("click", () => choose(optIndex, li));
-        ul.appendChild(li);
-      });
+  idx = 0;
+  score = 0;
+  answered = false;
+  document.getElementById("scoreLive").textContent = "0";
 
-      const exp = document.getElementById("explanation");
-      exp.style.display = "none";
-      exp.textContent = "";
+  document.getElementById("results").style.display = "none";
+  document.getElementById("quiz").style.display = "block";
 
-      const nextBtn = document.getElementById("nextBtn");
-      nextBtn.disabled = true;
-      nextBtn.textContent = (idx === quizData.length - 1) ? "Finish" : "Next";
+  // Push initial state so leaderboard shows them immediately
+  socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
 
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
-      }
-    }
+  loadQuestion();
+}
 
-    function choose(optIndex, element) {
-      if (answered) return;
-      answered = true;
+function loadQuestion() {
+  answered = false;
 
-      const q = quizData[idx];
-      const all = Array.from(document.querySelectorAll("#options .option"));
-      all.forEach(li => li.classList.add("disabled"));
+  const q = quizData[idx];
+  document.getElementById("qnum").textContent = String(idx + 1);
+  document.getElementById("question").textContent = q.q;
 
-      if (optIndex === q.correct) {
-        element.classList.add("correct");
-        score += 1;
-        document.getElementById("scoreLive").textContent = String(score);
-      } else {
-        element.classList.add("incorrect");
-        if (all[q.correct]) all[q.correct].classList.add("correct");
-      }
+  const ul = document.getElementById("options");
+  ul.innerHTML = "";
 
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
-      }
+  q.opts.forEach((text, optIndex) => {
+    const li = document.createElement("li");
+    li.className = "option";
+    li.textContent = String.fromCharCode(65 + optIndex) + ". " + text;
+    li.addEventListener("click", () => choose(optIndex, li));
+    ul.appendChild(li);
+  });
 
-      const exp = document.getElementById("explanation");
-      exp.textContent = q.exp;
-      exp.style.display = "block";
+  const exp = document.getElementById("explanation");
+  exp.style.display = "none";
+  exp.textContent = "";
 
-      document.getElementById("nextBtn").disabled = false;
-    }
+  const nextBtn = document.getElementById("nextBtn");
+  nextBtn.disabled = true;
+  nextBtn.textContent = (idx === quizData.length - 1) ? "Finish" : "Next";
 
-    function nextQuestion() {
-      if (!answered) return;
-      idx += 1;
-      if (idx >= quizData.length) showResults();
-      else loadQuestion();
-    }
+  // Update progress even before answering
+  if (myName && gameCode) {
+    const gameId = roomIdFromGameCode(gameCode);
+    socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
+  }
+}
+
+function choose(optIndex, element) {
+  if (answered) return;
+  answered = true;
+
+  const q = quizData[idx];
+  const all = Array.from(document.querySelectorAll("#options .option"));
+  all.forEach(li => li.classList.add("disabled"));
+
+  if (optIndex === q.correct) {
+    element.classList.add("correct");
+    score += 1;
+    document.getElementById("scoreLive").textContent = String(score);
+  } else {
+    element.classList.add("incorrect");
+    if (all[q.correct]) all[q.correct].classList.add("correct");
+  }
+
+  // Emit live score update after each question
+  if (myName && gameCode) {
+    const gameId = roomIdFromGameCode(gameCode);
+    socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
+  }
+
+  const exp = document.getElementById("explanation");
+  exp.textContent = q.exp;
+  exp.style.display = "block";
+
+  document.getElementById("nextBtn").disabled = false;
+}
+
+function nextQuestion() {
+  if (!answered) return;
+  idx += 1;
+  if (idx >= quizData.length) showResults();
+  else loadQuestion();
+}
 
 
     // =========================================================
@@ -543,10 +607,15 @@ socket.on("leaderboardUpdate", (rows) => {
       }
     });
 
-    window.addEventListener("load", () => {
-      renderQR();
-      updateGameUI();
-    });
+window.addEventListener("load", () => {
+  renderQR();
+  updateGameUI();
+
+  // NEW: prefill saved player name (if any)
+  const saved = getSavedName();
+  const input = document.getElementById("playerName");
+  if (input && !input.value && saved) input.value = saved;
+});
   </script>
   <!-- =========================================================
        END JAVASCRIPT
