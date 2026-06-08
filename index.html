@@ -47,20 +47,24 @@
     <div id="qrcode"></div>
     <div id="qrStatus"></div>
 
-    <div class="field">
-      <label class="small" for="playerName">Your name</label>
-      <input id="playerName" type="text" placeholder="e.g. Pat" autocomplete="nickname" style="text-align:left" />
+    <!-- Wrap fields + button in a form to fix mobile tap issue -->
+    <form id="joinForm">
+      <div class="field">
+        <label class="small" for="playerName">Your name</label>
+        <input id="playerName" type="text" placeholder="e.g. Pat" autocomplete="nickname" style="text-align:left" />
 
-      <label class="small" for="gameInput">Game code (format 12 34 56)</label>
-      <input id="gameInput" type="text" placeholder="12 34 56" inputmode="numeric" />
+        <label class="small" for="gameInput">Game code (format 12 34 56)</label>
+        <input id="gameInput" type="text" placeholder="12 34 56" inputmode="numeric" />
 
-      <div class="small">Current game: <span id="gameLabel" class="pill">None</span></div>
-    </div>
+        <div class="small">Current game: <span id="gameLabel" class="pill">None</span></div>
+      </div>
 
-    <div class="small hint">All players in the room must type the same game code to compete.</div>
-    <div class="row" style="margin-top:14px;">
-      <button class="primary" onclick="startQuiz()">Start Quiz</button>
-    </div>
+      <div class="small hint">All players in the room must type the same game code to compete.</div>
+      <div class="row" style="margin-top:14px;">
+        <!-- Removed onclick; using form submit instead -->
+        <button type="submit" class="primary">Start Quiz</button>
+      </div>
+    </form>
   </div>
 
   <div id="quiz-container" class="card">
@@ -264,6 +268,12 @@
         const d = String(e.target.value || "").replace(/\D/g, "").slice(0, 6);
         e.target.value = d.length <= 2 ? d : d.length <= 4 ? d.slice(0,2) + " " + d.slice(2) : d.slice(0,2) + " " + d.slice(2,4) + " " + d.slice(4,6);
       }
+    });
+
+    // Fix for mobile: use form submit instead of inline onclick
+    document.getElementById("joinForm").addEventListener("submit", function (e) {
+      e.preventDefault();         // avoid page reload
+      setTimeout(startQuiz, 0);   // ensure input value is flushed from virtual keyboard
     });
 
     window.addEventListener("load", () => {
