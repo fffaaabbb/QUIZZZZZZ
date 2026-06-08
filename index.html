@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Animals Quiz + QR + Join + Live Leaderboard</title>
-
+  <title>Animals Quiz</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
-
   <style>
     body { font-family: Arial, sans-serif; max-width: 820px; margin: 0 auto; padding: 18px; background: #f6f7fb; }
     .card { background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 6px 20px rgba(0,0,0,.08); margin-bottom: 14px; }
@@ -19,21 +17,16 @@
     .small { color: #666; font-size: 14px; }
     #quiz-container { display: none; }
     .meta { display:flex; justify-content:space-between; color:#666; font-size:14px; margin-bottom:8px; gap:10px; flex-wrap:wrap; }
-    .question { font-size: 20px; margin: 10px 0 10px; }
     ul { list-style: none; padding: 0; margin: 0; }
     .option { padding: 12px 12px; border: 1px solid #e5e7eb; border-radius: 10px; margin: 10px 0; cursor: pointer; background: #fafafa; user-select: none; }
     .option:hover { background: #f1f5ff; }
     .option.disabled { cursor: default; opacity: .9; }
     .option.correct { background: #e8f7ee; border-color: #2ecc71; }
     .option.incorrect { background: #fdecec; border-color: #e74c3c; }
-    .explanation { display: none; margin-top: 12px; padding: 12px; border-left: 4px solid #2ecc71; background: #f2fbf5; border-radius: 10px; color: #1f6b3c; }
     .actions { margin-top: 14px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
     button { border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer; font-weight: 600; }
     .primary { background: #4f46e5; color: #fff; }
     .primary:disabled { background: #b8b5ff; cursor: not-allowed; }
-    .secondary { background: #eef2ff; color: #3730a3; }
-    #results { display: none; text-align: center; }
-    #score { font-size: 40px; font-weight: 800; margin: 8px 0; color: #111827; }
     .field { margin-top: 10px; display: grid; gap: 6px; justify-content: center; }
     input[type="text"] { padding: 10px; border-radius: 10px; border: 1px solid #e5e7eb; width: min(360px, 90vw); font-size: 16px; text-align: center; }
     .row { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
@@ -42,60 +35,48 @@
     #leaderboard { font-size: 14px; color: #111827; line-height: 1.5; }
     .lb-row { display:flex; justify-content:space-between; gap:12px; padding: 6px 0; border-bottom: 1px solid #f1f1f1; }
     .lb-row:last-child { border-bottom: 0; }
-    .hint { max-width: 680px; margin: 8px auto 0; }
+    .hint { max-width: 680px; margin: 8px auto 0; text-align: center; }
     #resultFX { margin-top: 12px; min-height: 70px; }
+    #results { display: none; text-align: center; }
+    #score { font-size: 40px; font-weight: 800; margin: 8px 0; color: #111827; }
   </style>
 </head>
 <body>
   <div id="join-screen" class="card join-screen">
     <h1>Animals Quiz</h1>
-    <div class="small">
-      The QR code is constant for your YouTube video. To play together, one person creates a numeric game code and everyone joins that same code.
-    </div>
-
-    <div id="qrcode" aria-label="QR code"></div>
+    <div id="qrcode"></div>
     <div id="qrStatus"></div>
 
     <div class="field">
       <label class="small" for="playerName">Your name</label>
       <input id="playerName" type="text" placeholder="e.g. Pat" autocomplete="nickname" style="text-align:left" />
 
-      <label class="small" for="gameInput">Game code (format 123-456)</label>
-      <input id="gameInput" type="text" placeholder="Create a new game or type 123-456" inputmode="numeric" />
+      <label class="small" for="gameInput">Game code (format 12 34 56)</label>
+      <input id="gameInput" type="text" placeholder="12 34 56" inputmode="numeric" />
 
       <div class="small">Current game: <span id="gameLabel" class="pill">None</span></div>
     </div>
 
-    <div class="row" style="margin-top:10px;">
-      <button class="secondary" onclick="createNewGame()">Create new game</button>
-      <button class="secondary" onclick="useEnteredGame()">Join typed code</button>
-      <button class="primary" onclick="startQuiz()">Start quiz</button>
-    </div>
-
-    <div class="small hint">
-      Tip: Share the game code shown above. Everyone scans the same QR and types the same code to join the same live leaderboard.
+    <div class="small hint">All players in the room must type the same game code to compete.</div>
+    <div class="row" style="margin-top:14px;">
+      <button class="primary" onclick="startQuiz()">Start Quiz</button>
     </div>
   </div>
 
   <div id="quiz-container" class="card">
     <div id="quiz">
       <div class="meta">
-        <div>Question <span id="qnum">1</span>/<span id="qtotal">25</span></div>
+        <div>Q <span id="qnum">1</span>/<span id="qtotal">25</span></div>
         <div>Score <span id="scoreLive">0</span></div>
         <div>Player <span id="whoami" class="pill"></span></div>
         <div>Game <span id="gamePill" class="pill"></span></div>
       </div>
 
-      <div id="question" class="question"></div>
       <ul id="options"></ul>
-
       <div id="leaderboardBox" class="card">
         <div style="font-weight:700; margin-bottom:6px;">Leaderboard</div>
         <div id="leaderboard" class="small">Connecting...</div>
       </div>
-
-      <div id="explanation" class="explanation"></div>
-
       <div class="actions" style="justify-content:flex-end;">
         <button class="secondary" onclick="restart()">Restart</button>
         <button id="nextBtn" class="primary" onclick="nextQuestion()" disabled>Next</button>
@@ -106,7 +87,6 @@
       <h2>Finished!</h2>
       <div id="score"></div>
       <div id="resultFX"></div>
-      <div class="small">Refresh or press Restart to try again.</div>
       <div class="actions" style="justify-content:center;">
         <button class="primary" onclick="restart()">Play again</button>
       </div>
@@ -115,396 +95,187 @@
 
   <script>
     const quizData = [
-      { q: "What do you call a baby cat?", opts: ["Puppy", "Kitten", "Cub", "Foal"], correct: 1, exp: "A baby cat is called a kitten." },
-      { q: "Which animal is known as the King of the Jungle?", opts: ["Tiger", "Elephant", "Lion", "Leopard"], correct: 2, exp: "The lion is traditionally called the King of the Jungle." },
-      { q: "What is the fastest land animal?", opts: ["Lion", "Horse", "Cheetah", "Leopard"], correct: 2, exp: "The cheetah can reach speeds up to 120 km/h." },
-      { q: "Which animal has a very long neck?", opts: ["Elephant", "Giraffe", "Camel", "Zebra"], correct: 1, exp: "The giraffe has the longest neck of any living animal." },
-      { q: "Which animal is known for its black and white stripes?", opts: ["Cheetah", "Hyena", "Zebra", "Panda"], correct: 2, exp: "Zebras are famous for their distinctive black and white stripes." },
-      { q: "What animal builds dams in rivers?", opts: ["Otter", "Beaver", "Muskrat", "Platypus"], correct: 1, exp: "Beavers build dams using sticks and mud to create ponds." },
-      { q: "Which bird cannot fly?", opts: ["Eagle", "Parrot", "Penguin", "Hawk"], correct: 2, exp: "Penguins have wings adapted for swimming, not flying." },
-      { q: "What is the largest land animal on Earth?", opts: ["Hippopotamus", "White Rhinoceros", "African Elephant", "Giraffe"], correct: 2, exp: "The African elephant is the heaviest land animal on Earth." },
-      { q: "Which marine animal has three hearts?", opts: ["Shark", "Octopus", "Dolphin", "Whale"], correct: 1, exp: "Octopuses have three hearts: two pump blood to gills, one to body." },
-      { q: "What do you call a group of wolves?", opts: ["Pack", "Herd", "Pride", "Colony"], correct: 0, exp: "Wolves live and hunt together in social groups called packs." },
-      { q: "Which reptile can change its skin color?", opts: ["Gecko", "Iguana", "Chameleon", "Komodo Dragon"], correct: 2, exp: "Chameleons change color for communication and temperature regulation." },
-      { q: "What is the only mammal capable of true flight?", opts: ["Flying Squirrel", "Bat", "Sugar Glider", "Colugo"], correct: 1, exp: "Bats are the only mammals with wings enabling true sustained flight." },
-      { q: "Which animal produces silk?", opts: ["Spider", "Silkworm", "Bee", "Ant"], correct: 1, exp: "Silkworms spin cocoons of natural silk thread used in fabric." },
-      { q: "What is a marsupial's defining feature?", opts: ["Scales on body", "Pouch for young", "Webbed feet", "Retractable claws"], correct: 1, exp: "Marsupials carry and nurse undeveloped young in an abdominal pouch." },
-      { q: "Which animal has the most complex eyes in nature?", opts: ["Eagle", "Mantis Shrimp", "Dragonfly", "Cat"], correct: 1, exp: "Mantis shrimp have 16 types of color receptors vs. 3 in humans." },
-      { q: "What is the venomous mammal that lays eggs?", opts: ["Hedgehog", "Shrew", "Platypus", "Mole"], correct: 2, exp: "The male platypus has venomous spurs on its hind legs." },
-      { q: "Which bird has the longest migration route?", opts: ["Bar-tailed Godwit", "Arctic Tern", "Albatross", "Sooty Shearwater"], correct: 1, exp: "The Arctic tern migrates pole-to-pole, covering up to 90,000 km/year." },
-      { q: "What is the largest species of shark?", opts: ["Great White Shark", "Tiger Shark", "Whale Shark", "Bull Shark"], correct: 2, exp: "The whale shark is the largest fish, reaching over 12 meters long." },
-      { q: "Which insect can lift 50 times its own body weight?", opts: ["Beetle", "Ant", "Grasshopper", "Wasp"], correct: 1, exp: "Leafcutter ants can carry objects 50 times heavier than themselves." },
-      { q: "What animal has fingerprints similar to humans?", opts: ["Chimpanzee", "Gorilla", "Koala", "Orangutan"], correct: 2, exp: "Koala fingerprints are nearly identical to human ones under a microscope." },
-      { q: "Which fish can survive out of water for months?", opts: ["Mudskipper", "Lungfish", "Snakehead Fish", "Walking Catfish"], correct: 1, exp: "African lungfish can survive droughts by burrowing in dried mud." },
-      { q: "What is the mimic octopus known for?", opts: ["Glowing in the dark", "Impersonating other species", "Walking on land", "Producing venom"], correct: 1, exp: "The mimic octopus can imitate lionfish, flatfish, and sea snakes." },
-      { q: "Which animal has the longest lifespan recorded?", opts: ["Greenland Shark", "Ocean Quahog Clam", "Bowhead Whale", "Giant Tortoise"], correct: 0, exp: "Greenland sharks can live over 400 years, the longest of any vertebrate." },
-      { q: "What is unique about a tardigrade under extreme stress?", opts: ["It becomes transparent", "It enters cryptobiosis", "It sheds its exoskeleton", "It multiplies by fission"], correct: 1, exp: "Tardigrades enter cryptobiosis, halting all metabolism to survive extremes." },
-      { q: "Which cephalopod has the largest eyes in the animal kingdom?", opts: ["Giant Octopus", "Nautilus", "Giant Squid", "Colossal Squid"], correct: 3, exp: "The colossal squid has the largest eyes ever recorded, up to 27 cm wide." }
+      { q: "What do you call a baby cat?", opts: ["Puppy", "Kitten", "Cub", "Foal"], correct: 1 },
+      { q: "Which animal is known as the King of the Jungle?", opts: ["Tiger", "Elephant", "Lion", "Leopard"], correct: 2 },
+      { q: "What is the fastest land animal?", opts: ["Lion", "Horse", "Cheetah", "Leopard"], correct: 2 },
+      { q: "Which animal has a very long neck?", opts: ["Elephant", "Giraffe", "Camel", "Zebra"], correct: 1 },
+      { q: "Which animal is known for its black and white stripes?", opts: ["Cheetah", "Hyena", "Zebra", "Panda"], correct: 2 },
+      { q: "What animal builds dams in rivers?", opts: ["Otter", "Beaver", "Muskrat", "Platypus"], correct: 1 },
+      { q: "Which bird cannot fly?", opts: ["Eagle", "Parrot", "Penguin", "Hawk"], correct: 2 },
+      { q: "What is the largest land animal on Earth?", opts: ["Hippopotamus", "White Rhinoceros", "African Elephant", "Giraffe"], correct: 2 },
+      { q: "Which marine animal has three hearts?", opts: ["Shark", "Octopus", "Dolphin", "Whale"], correct: 1 },
+      { q: "What do you call a group of wolves?", opts: ["Pack", "Herd", "Pride", "Colony"], correct: 0 },
+      { q: "Which reptile can change its skin color?", opts: ["Gecko", "Iguana", "Chameleon", "Komodo Dragon"], correct: 2 },
+      { q: "What is the only mammal capable of true flight?", opts: ["Flying Squirrel", "Bat", "Sugar Glider", "Colugo"], correct: 1 },
+      { q: "Which animal produces silk?", opts: ["Spider", "Silkworm", "Bee", "Ant"], correct: 1 },
+      { q: "What is a marsupial's defining feature?", opts: ["Scales on body", "Pouch for young", "Webbed feet", "Retractable claws"], correct: 1 },
+      { q: "Which animal has the most complex eyes in nature?", opts: ["Eagle", "Mantis Shrimp", "Dragonfly", "Cat"], correct: 1 },
+      { q: "What is the venomous mammal that lays eggs?", opts: ["Hedgehog", "Shrew", "Platypus", "Mole"], correct: 2 },
+      { q: "Which bird has the longest migration route?", opts: ["Bar-tailed Godwit", "Arctic Tern", "Albatross", "Sooty Shearwater"], correct: 1 },
+      { q: "What is the largest species of shark?", opts: ["Great White Shark", "Tiger Shark", "Whale Shark", "Bull Shark"], correct: 2 },
+      { q: "Which insect can lift 50 times its own body weight?", opts: ["Beetle", "Ant", "Grasshopper", "Wasp"], correct: 1 },
+      { q: "What animal has fingerprints similar to humans?", opts: ["Chimpanzee", "Gorilla", "Koala", "Orangutan"], correct: 2 },
+      { q: "Which fish can survive out of water for months?", opts: ["Mudskipper", "Lungfish", "Snakehead Fish", "Walking Catfish"], correct: 1 },
+      { q: "What is the mimic octopus known for?", opts: ["Glowing in the dark", "Impersonating other species", "Walking on land", "Producing venom"], correct: 1 },
+      { q: "Which animal has the longest lifespan recorded?", opts: ["Greenland Shark", "Ocean Quahog Clam", "Bowhead Whale", "Giant Tortoise"], correct: 0 },
+      { q: "What is unique about a tardigrade under extreme stress?", opts: ["It becomes transparent", "It enters cryptobiosis", "It sheds its exoskeleton", "It multiplies by fission"], correct: 1 },
+      { q: "Which cephalopod has the largest eyes in the animal kingdom?", opts: ["Giant Octopus", "Nautilus", "Giant Squid", "Colossal Squid"], correct: 3 }
     ];
 
     const SOCKET_SERVER_URL = "https://quiz-leaderboard-server-1.onrender.com";
+    const cuteNames = ["Pink Flamingo", "Tiny Panda", "Happy Koala", "Baby Tiger", "Sunny Bunny", "Mimi Cat", "Blue Dolphin", "Star Penguin", "Lucky Zebra", "Peach Fox", "Moon Kitty", "Jelly Otter"];
 
-    let gameCode = "";
-    let idx = 0;
-    let score = 0;
-    let answered = false;
-    let myName = "";
-    let latestLeaderboard = [];
-    let awaitingFinalResults = false;
+    let gameCode = "", idx = 0, score = 0, answered = false, myName = "", latestLeaderboard = [], awaitingFinalResults = false, defaultGameCode = "", defaultPlayerName = "";
 
-    function getTopScore(rows) {
-      if (!Array.isArray(rows) || rows.length === 0) return null;
-      return rows.reduce((max, r) => Math.max(max, Number(r.score ?? 0)), -Infinity);
+    function roomIdFromGameCode(code) { return String(code || "").replace(/\D/g, ""); }
+    function makeGameCode() { const s = String(Math.floor(Math.random() * 1000000)).padStart(6, "0"); return s.slice(0,2) + " " + s.slice(2,4) + " " + s.slice(4,6); }
+    function normalizeGameCode(code) { const d = String(code || "").replace(/\D/g, ""); return d.length === 6 ? d.slice(0,2) + " " + d.slice(2,4) + " " + d.slice(4,6) : ""; }
+    function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':'&quot;',"\'":"&#39;" }[c])); }
+
+    function updateGameUI() {
+      document.getElementById("gameLabel").textContent = gameCode || "None";
+      document.getElementById("gamePill").textContent = gameCode || "";
+      const gi = document.getElementById("gameInput");
+      if (gi && gameCode && gi.value === defaultGameCode) gi.value = gameCode;
     }
 
-    function everyoneFinished(rows) {
-      if (!Array.isArray(rows) || rows.length === 0) return false;
-      return rows.every(r => Number(r.qIndex ?? 0) >= quizData.length);
+    function renderQR() {
+      const holder = document.getElementById("qrcode");
+      holder.innerHTML = "";
+      if (!window.QRCode) return;
+      new QRCode(holder, { text: window.location.origin + window.location.pathname, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+      document.getElementById("qrStatus").textContent = window.location.origin + window.location.pathname;
     }
 
-    function fireWinnerConfetti() {
-      if (typeof confetti !== "function") return;
-      confetti({ particleCount: 160, spread: 70, origin: { y: 0.6 } });
-      setTimeout(() => confetti({ particleCount: 120, spread: 100, origin: { y: 0.6 } }), 250);
+    function saveName(name) { try { window.name = JSON.stringify({ quizPlayerName: name }); } catch {} }
+    function getSavedName() { try { return JSON.parse(window.name || "{}").quizPlayerName || ""; } catch { return ""; } }
+
+    const socket = io(SOCKET_SERVER_URL, { transports: ["websocket", "polling"] });
+    socket.on("connect", () => document.getElementById("leaderboard").textContent = "Connected");
+    socket.on("connect_error", () => document.getElementById("leaderboard").textContent = "Cannot reach server");
+    socket.on("leaderboardUpdate", rows => { latestLeaderboard = rows || []; renderLeaderboard(rows); });
+
+    function renderLeaderboard(rows) {
+      const el = document.getElementById("leaderboard");
+      if (!el || !rows || !rows.length) { el.textContent = "No players yet."; return; }
+      el.innerHTML = rows.map((r, i) => `<div class="lb-row"><div>${i+1}. ${escapeHtml(r.name)}${r.name===myName?" (you)":""}</div><div><span class="pill">${r.score||0}</span></div></div>`).join("");
     }
 
-    function showLoserThumbsDown() {
-      const fx = document.getElementById("resultFX");
-      if (!fx) return;
+    function startQuiz() {
+      const input = document.getElementById("playerName");
+      myName = (input?.value || "").trim();
+      saveName(myName);
 
-      fx.innerHTML = `
-        <div style="display:inline-flex; align-items:center; gap:10px; color:#b91c1c; font-weight:800;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" fill="currentColor" class="bi bi-hand-thumbs-down" viewBox="0 0 16 16" aria-label="Thumbs down">
-            <path d="M8.864 15.674c-.956.24-1.843-.484-1.908-1.42-.072-1.05-.23-2.015-.428-2.59-.125-.36-.479-1.012-1.04-1.638-.557-.624-1.282-1.179-2.131-1.41C2.685 8.432 2 7.85 2 7V3c0-.845.682-1.464 1.448-1.546 1.07-.113 1.564-.415 2.068-.723l.048-.029c.272-.166.578-.349.97-.484C6.931.08 7.395 0 8 0h3.5c.937 0 1.599.478 1.934 1.064.164.287.254.607.254.913 0 .152-.023.312-.077.464.201.262.38.577.488.9.11.33.172.762.004 1.15.069.13.12.268.159.403.077.27.113.567.113.856s-.036.586-.113.856c-.035.12-.08.244-.138.363.394.571.418 1.2.234 1.733-.206.592-.682 1.1-1.2 1.272-.847.283-1.803.276-2.516.211a10 10 0 0 1-.443-.05 9.36 9.36 0 0 1-.062 4.51c-.138.508-.55.848-1.012.964z"/>
-          </svg>
-          <span>Not #1 this time</span>
-        </div>
-      `;
+      if (!gameCode) { const t = normalizeGameCode(document.getElementById("gameInput").value); if (!t) { alert("Type game code like 12 34 56"); return; } gameCode = t; }
+      updateGameUI();
+
+      socket.emit("joinGame", { gameId: roomIdFromGameCode(gameCode), playerName: myName });
+      document.getElementById("join-screen").style.display = "none";
+      document.getElementById("quiz-container").style.display = "block";
+      document.getElementById("qtotal").textContent = quizData.length;
+      document.getElementById("whoami").textContent = myName;
+      document.getElementById("gamePill").textContent = gameCode;
+      document.getElementById("scoreLive").textContent = "0";
+
+      idx = 0; score = 0; answered = false;
+      socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx });
+      loadQuestion();
     }
 
-    function showWaitingMessage() {
-      const fx = document.getElementById("resultFX");
-      if (!fx) return;
-
-      const rows = Array.isArray(latestLeaderboard) ? latestLeaderboard : [];
-      const total = rows.length;
-      const finished = rows.filter(r => Number(r.qIndex ?? 0) >= quizData.length).length;
-
-      if (total === 0) {
-        fx.innerHTML = `<div class="small">Waiting for other players to finish…</div>`;
-        return;
-      }
-
-      fx.innerHTML = `
-        <div class="small">
-          Waiting for other players to finish…<br>
-          <strong>${finished}</strong> / <strong>${total}</strong> finished
-        </div>
-      `;
+    function loadQuestion() {
+      answered = false;
+      document.getElementById("qnum").textContent = idx + 1;
+      const ul = document.getElementById("options");
+      ul.innerHTML = "";
+      quizData[idx].opts.forEach((text, i) => {
+        const li = document.createElement("li");
+        li.className = "option";
+        li.textContent = String.fromCharCode(65 + i);
+        li.addEventListener("click", () => choose(i, li));
+        ul.appendChild(li);
+      });
+      document.getElementById("nextBtn").disabled = true;
+      document.getElementById("nextBtn").textContent = idx === quizData.length - 1 ? "Finish" : "Next";
+      socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx });
     }
 
-    function maybeFinalizeWinners() {
-      if (!awaitingFinalResults) return;
+    function choose(optIndex, element) {
+      if (answered) return;
+      answered = true;
+      const q = quizData[idx];
+      document.querySelectorAll("#options .option").forEach(li => li.classList.add("disabled"));
 
-      if (!everyoneFinished(latestLeaderboard)) {
-        showWaitingMessage();
-        return;
-      }
+      if (optIndex === q.correct) { element.classList.add("correct"); score++; document.getElementById("scoreLive").textContent = score; }
+      else element.classList.add("incorrect");
 
-      awaitingFinalResults = false;
+      socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx });
+      document.getElementById("nextBtn").disabled = false;
+    }
 
-      const topScore = getTopScore(latestLeaderboard);
-      const iAmWinner = (topScore !== null) && (score === topScore);
-
-      const fx = document.getElementById("resultFX");
-      if (fx) fx.innerHTML = "";
-
-      if (iAmWinner) fireWinnerConfetti();
-      else showLoserThumbsDown();
+    function nextQuestion() {
+      if (!answered) return;
+      idx++;
+      if (idx >= quizData.length) showResults(); else loadQuestion();
     }
 
     function showResults() {
       document.getElementById("quiz").style.display = "none";
       document.getElementById("results").style.display = "block";
       document.getElementById("score").textContent = `${score}/${quizData.length}`;
-
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: quizData.length });
-      }
-
+      socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: quizData.length });
       awaitingFinalResults = true;
-      showWaitingMessage();
-      maybeFinalizeWinners();
+      setTimeout(checkWinners, 500);
     }
 
-    const socket = io(SOCKET_SERVER_URL, { transports: ["websocket", "polling"] });
-
-    socket.on("connect", () => setLeaderboardText("Connected. Create or join a game code."));
-    socket.on("connect_error", () => setLeaderboardText("Cannot reach leaderboard server."));
-
-    socket.on("leaderboardUpdate", (rows) => {
-      latestLeaderboard = Array.isArray(rows) ? rows : [];
-      renderLeaderboard(rows);
-      maybeFinalizeWinners();
-    });
-
-    function setLeaderboardText(text) {
-      const el = document.getElementById("leaderboard");
-      if (el) el.textContent = text;
-    }
-
-    function renderLeaderboard(rows) {
-      const el = document.getElementById("leaderboard");
-      if (!el) return;
-
-      if (!Array.isArray(rows) || rows.length === 0) {
-        el.textContent = "No players yet.";
+    function checkWinners() {
+      if (!awaitingFinalResults || !latestLeaderboard.every(r => r.qIndex >= quizData.length)) {
+        if (awaitingFinalResults) setTimeout(checkWinners, 500);
         return;
       }
-
-      el.innerHTML = rows.map((r, i) => {
-        const me = (r.name === myName) ? " (you)" : "";
-        const progress = (typeof r.qIndex === "number") ? `Q${r.qIndex + 1}` : "";
-        return `
-          <div class="lb-row">
-            <div>${i + 1}. ${escapeHtml(r.name)}${me}</div>
-            <div><span class="pill">${Number(r.score ?? 0)}</span> <span class="small">${escapeHtml(progress)}</span></div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[c]));
-    }
-
-    function makeGameCode() {
-      const six = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
-      return six.slice(0, 3) + "-" + six.slice(3);
-    }
-
-    function normalizeGameCode(code) {
-      const digits = String(code || "").replace(/\D/g, "");
-      if (digits.length !== 6) return "";
-      return digits.slice(0, 3) + "-" + digits.slice(3);
-    }
-
-    function roomIdFromGameCode(code) {
-      return String(code || "").replace(/\D/g, "");
-    }
-
-    function updateGameUI() {
-      document.getElementById("gameLabel").textContent = gameCode ? gameCode : "None";
-      document.getElementById("gamePill").textContent = gameCode ? gameCode : "";
-      const gi = document.getElementById("gameInput");
-      if (gi && gameCode && !gi.value) gi.value = gameCode;
-    }
-
-    function createNewGame() {
-      gameCode = makeGameCode();
-      document.getElementById("gameInput").value = gameCode;
-      updateGameUI();
-      setLeaderboardText("Game created. Share the code, then press Start quiz.");
-    }
-
-    function useEnteredGame() {
-      const typed = normalizeGameCode(document.getElementById("gameInput").value);
-      if (!typed) {
-        alert("Please enter a 6-digit code like 123-456");
-        return;
-      }
-      gameCode = typed;
-      document.getElementById("gameInput").value = gameCode;
-      updateGameUI();
-      setLeaderboardText("Game selected. Press Start quiz.");
-    }
-
-    function renderQR() {
-      const holder = document.getElementById("qrcode");
-      const status = document.getElementById("qrStatus");
-
-      holder.innerHTML = "";
-      if (!window.QRCode) {
-        status.textContent = "QR library not loaded.";
-        return;
-      }
-
-      const joinUrl = window.location.origin + window.location.pathname;
-      new QRCode(holder, {
-        text: joinUrl,
-        width: 220,
-        height: 220,
-        correctLevel: QRCode.CorrectLevel.M
-      });
-      status.textContent = joinUrl;
-    }
-
-    function saveName(name) {
-      try {
-        window.name = JSON.stringify({ ...JSON.parse(window.name || "{}"), quizPlayerName: name });
-      } catch {
-        window.name = JSON.stringify({ quizPlayerName: name });
-      }
-    }
-
-    function getSavedName() {
-      try {
-        return JSON.parse(window.name || "{}").quizPlayerName || "";
-      } catch {
-        return "";
-      }
-    }
-
-    function startQuiz() {
-      const input = document.getElementById("playerName");
-
-      if (input && !input.value) {
-        const saved = getSavedName();
-        if (saved) input.value = saved;
-      }
-
-      myName = (input?.value || "").trim();
-      if (!myName) {
-        alert("Please enter your name");
-        return;
-      }
-
-      saveName(myName);
-
-      if (!gameCode) {
-        const typed = normalizeGameCode(document.getElementById("gameInput").value);
-        if (!typed) {
-          alert("Create a new game or type a 6-digit game code first");
-          return;
-        }
-        gameCode = typed;
-      }
-      updateGameUI();
-
-      const gameId = roomIdFromGameCode(gameCode);
-      document.getElementById("whoami").textContent = myName;
-
-      socket.emit("joinGame", { gameId, playerName: myName });
-
-      document.getElementById("join-screen").style.display = "none";
-      document.getElementById("quiz-container").style.display = "block";
-      document.getElementById("qtotal").textContent = String(quizData.length);
-
-      idx = 0;
-      score = 0;
-      answered = false;
-      document.getElementById("scoreLive").textContent = "0";
-
-      document.getElementById("results").style.display = "none";
-      document.getElementById("quiz").style.display = "block";
-
-      socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
-
-      loadQuestion();
-    }
-
-    function loadQuestion() {
-      answered = false;
-
-      const q = quizData[idx];
-      document.getElementById("qnum").textContent = String(idx + 1);
-      document.getElementById("question").textContent = q.q;
-
-      const ul = document.getElementById("options");
-      ul.innerHTML = "";
-
-      q.opts.forEach((text, optIndex) => {
-        const li = document.createElement("li");
-        li.className = "option";
-        li.textContent = String.fromCharCode(65 + optIndex) + ". " + text;
-        li.addEventListener("click", () => choose(optIndex, li));
-        ul.appendChild(li);
-      });
-
-      const exp = document.getElementById("explanation");
-      exp.style.display = "none";
-      exp.textContent = "";
-
-      const nextBtn = document.getElementById("nextBtn");
-      nextBtn.disabled = true;
-      nextBtn.textContent = (idx === quizData.length - 1) ? "Finish" : "Next";
-
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
-      }
-    }
-
-    function choose(optIndex, element) {
-      if (answered) return;
-      answered = true;
-
-      const q = quizData[idx];
-      const all = Array.from(document.querySelectorAll("#options .option"));
-      all.forEach(li => li.classList.add("disabled"));
-
-      if (optIndex === q.correct) {
-        element.classList.add("correct");
-        score += 1;
-        document.getElementById("scoreLive").textContent = String(score);
-      } else {
-        element.classList.add("incorrect");
-        if (all[q.correct]) all[q.correct].classList.add("correct");
-      }
-
-      if (myName && gameCode) {
-        const gameId = roomIdFromGameCode(gameCode);
-        socket.emit("scoreUpdate", { gameId, playerName: myName, score, qIndex: idx });
-      }
-
-      const exp = document.getElementById("explanation");
-      exp.textContent = q.exp;
-      exp.style.display = "block";
-
-      document.getElementById("nextBtn").disabled = false;
-    }
-
-    function nextQuestion() {
-      if (!answered) return;
-      idx += 1;
-      if (idx >= quizData.length) showResults();
-      else loadQuestion();
+      awaitingFinalResults = false;
+      const fx = document.getElementById("resultFX");
+      const topScore = latestLeaderboard.reduce((m, r) => Math.max(m, r.score || 0), -Infinity);
+      if (score === topScore) confetti({ particleCount: 160, spread: 70, origin: { y: 0.6 } });
+      else fx.innerHTML = `<div style="color:#b91c1c;font-weight:800;">Not #1 this time</div>`;
     }
 
     function restart() {
       document.getElementById("quiz-container").style.display = "none";
       document.getElementById("join-screen").style.display = "block";
-
-      idx = 0;
-      score = 0;
-      answered = false;
-      myName = "";
-      document.getElementById("playerName").value = "";
-
+      idx = 0; score = 0; answered = false; myName = "";
       gameCode = "";
-      document.getElementById("gameInput").value = "";
+      document.getElementById("playerName").value = defaultPlayerName;
+      document.getElementById("gameInput").value = defaultGameCode;
       updateGameUI();
-      setLeaderboardText("Connected. Create or join a game code.");
       renderQR();
     }
 
-    document.addEventListener("input", (e) => {
+    // Clear default value on focus (click/tap)
+    document.getElementById("playerName").addEventListener("focus", e => {
+      if (e.target.value === defaultPlayerName) e.target.value = "";
+    });
+
+    document.getElementById("gameInput").addEventListener("focus", e => {
+      if (e.target.value === defaultGameCode) e.target.value = "";
+    });
+
+    document.addEventListener("input", e => {
       if (e.target && e.target.id === "gameInput") {
-        const digits = String(e.target.value || "").replace(/\D/g, "").slice(0, 6);
-        if (digits.length <= 3) e.target.value = digits;
-        else e.target.value = digits.slice(0, 3) + "-" + digits.slice(3);
+        const d = String(e.target.value || "").replace(/\D/g, "").slice(0, 6);
+        e.target.value = d.length <= 2 ? d : d.length <= 4 ? d.slice(0,2) + " " + d.slice(2) : d.slice(0,2) + " " + d.slice(2,4) + " " + d.slice(4,6);
       }
     });
 
     window.addEventListener("load", () => {
       renderQR();
+      defaultGameCode = makeGameCode();
+      gameCode = defaultGameCode;
+      document.getElementById("gameInput").value = defaultGameCode;
       updateGameUI();
+      
       const saved = getSavedName();
-      const input = document.getElementById("playerName");
-      if (input && !input.value && saved) input.value = saved;
+      defaultPlayerName = saved || cuteNames[Math.floor(Math.random() * cuteNames.length)];
+      document.getElementById("playerName").value = defaultPlayerName;
     });
   </script>
 </body>
