@@ -4,11 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Animals Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@100;300;400;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
   <style>
-    :root { --teal: #00fff0; }
+    :root { --teal: #00fff0; --display-font: "Londrina Solid", Arial, sans-serif; }
     * { box-sizing: border-box; }
 
     body {
@@ -30,16 +33,27 @@
     }
 
     .card {
+      margin-bottom: 14px;
+      padding: 0;
       background: transparent;
       border: 0;
       border-radius: 0;
-      padding: 0;
       box-shadow: none;
-      margin-bottom: 14px;
-      backdrop-filter: none;
     }
 
-    h1 { margin: 0 0 8px; text-shadow: 0 0 12px var(--teal); }
+    h1, h2, #questionNumber, #questionText, #questionScore, .option, #score {
+      font-family: var(--display-font);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(42px, 10vw, 64px);
+      font-weight: 900;
+      letter-spacing: .5px;
+      text-shadow: 0 0 12px var(--teal);
+    }
+
+    h2 { font-size: clamp(36px, 8vw, 54px); font-weight: 900; }
 
     .join-screen {
       max-width: 480px;
@@ -49,7 +63,7 @@
       background: rgba(5, 20, 27, .48);
       border: 1px solid rgba(0, 255, 240, .20);
       border-radius: 14px;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, .28);
+      box-shadow: 0 6px 10px rgba(0, 0, 0, .28);
     }
 
     #qrcode {
@@ -70,10 +84,47 @@
       justify-content: space-between;
       gap: 10px;
       flex-wrap: wrap;
-      margin-bottom: 18px;
+      max-width: 620px;
+      margin: 0 auto 18px;
       color: #d2f7f5;
       font-size: 14px;
       text-shadow: 0 1px 4px #000;
+    }
+
+    #questionBox {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      max-width: 620px;
+      min-height: 116px;
+      margin: 0 auto 18px;
+      padding: 18px 22px;
+      color: #dffffd;
+      background: rgba(0, 30, 36, .72);
+      border: 2px solid var(--teal);
+      border-radius: 16px;
+      box-shadow: 0 0 7px rgba(0,255,240,.8), inset 0 0 18px rgba(0,255,240,.18);
+    }
+
+    #questionNumber, #questionScore {
+      white-space: nowrap;
+      color: var(--teal);
+      font-size: clamp(24px, 4vw, 32px);
+      font-weight: 900;
+      text-shadow: 0 0 7px var(--teal), 0 0 20px var(--teal);
+    }
+
+    #questionScore { text-align: right; }
+
+    #questionText {
+      min-width: 0;
+      color: #dffffd;
+      font-size: clamp(26px, 5vw, 38px);
+      font-weight: 900;
+      line-height: 1.05;
+      text-align: center;
+      text-shadow: 0 1px 5px #000;
     }
 
     ul { padding: 0; margin: 0; list-style: none; }
@@ -99,10 +150,10 @@
       background: rgba(0, 30, 36, .72);
       border: 2px solid var(--teal);
       border-radius: 16px;
-      font-size: clamp(42px, 10vw, 76px);
+      font-size: clamp(56px, 13vw, 104px);
       font-weight: 900;
       line-height: 1;
-      text-shadow: 0 0 7px var(--teal), 0 0 20px var(--teal);
+      text-shadow: 0 0 3px var(--teal), 0 0 10px var(--teal);
       box-shadow: 0 0 7px rgba(0,255,240,.8), inset 0 0 18px rgba(0,255,240,.18);
       transition: transform .12s, background .15s, color .15s, border-color .15s, box-shadow .15s;
     }
@@ -126,7 +177,13 @@
       box-shadow: 0 0 20px #ff203d, inset 0 0 25px rgba(255,255,255,.18);
     }
 
-    .actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
 
     button {
       padding: 11px 14px;
@@ -159,7 +216,8 @@
     .hint { max-width: 680px; margin: 8px auto 0; text-align: center; }
 
     #leaderboardBox {
-      margin-top: 18px;
+      max-width: 620px;
+      margin: 18px auto 0;
       padding: 18px;
       background: rgba(5, 20, 27, .62);
       border: 1px solid rgba(0, 255, 240, .22);
@@ -172,12 +230,15 @@
     .lb-row:last-child { border-bottom: 0; }
     #resultFX { min-height: 70px; margin-top: 12px; }
     #results { text-align: center; }
-    #score { margin: 8px 0; color: #fff; font-size: 40px; font-weight: 800; }
+    #score { margin: 8px 0; color: #fff; font-size: 56px; font-weight: 900; }
 
-    @media (max-width: 480px) {
+    @media (max-width: 560px) {
       body { padding: 12px; }
       #options { gap: 10px; }
       .option { padding: 10px; }
+      #questionBox { gap: 10px; min-height: 0; padding: 14px 12px; }
+      #questionNumber, #questionScore { font-size: 18px; }
+      #questionText { font-size: 22px; }
     }
   </style>
 </head>
@@ -206,10 +267,14 @@
   <div id="quiz-container" class="card">
     <div id="quiz">
       <div class="meta">
-        <div>Q <span id="qnum">1</span>/<span id="qtotal">17</span></div>
-        <div>Score <span id="scoreLive">0</span></div>
         <div>Player <span id="whoami" class="pill"></span></div>
         <div>Game <span id="gamePill" class="pill"></span></div>
+      </div>
+
+      <div id="questionBox">
+        <div id="questionNumber">1/17</div>
+        <div id="questionText">Question</div>
+        <div id="questionScore">Score <span id="scoreLive">0</span></div>
       </div>
 
       <ul id="options"></ul>
@@ -268,14 +333,17 @@
     let defaultPlayerName = "";
 
     function roomIdFromGameCode(code) { return String(code || "").replace(/\D/g, ""); }
+
     function makeGameCode() {
       const s = String(Math.floor(Math.random() * 1000000)).padStart(6, "0");
       return s.slice(0, 2) + " " + s.slice(2, 4) + " " + s.slice(4, 6);
     }
+
     function normalizeGameCode(code) {
       const d = String(code || "").replace(/\D/g, "");
       return d.length === 6 ? d.slice(0, 2) + " " + d.slice(2, 4) + " " + d.slice(4, 6) : "";
     }
+
     function escapeHtml(s) {
       return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
@@ -300,8 +368,13 @@
       document.getElementById("qrStatus").textContent = window.location.origin + window.location.pathname;
     }
 
-    function saveName(name) { try { window.name = JSON.stringify({ quizPlayerName: name }); } catch {} }
-    function getSavedName() { try { return JSON.parse(window.name || "{}").quizPlayerName || ""; } catch { return ""; } }
+    function saveName(name) {
+      try { window.name = JSON.stringify({ quizPlayerName: name }); } catch {}
+    }
+
+    function getSavedName() {
+      try { return JSON.parse(window.name || "{}").quizPlayerName || ""; } catch { return ""; }
+    }
 
     const socket = io(SOCKET_SERVER_URL, { transports: ["websocket", "polling"] });
     socket.on("connect", () => document.getElementById("leaderboard").textContent = "Connected");
@@ -317,6 +390,7 @@
         el.textContent = "No players yet.";
         return;
       }
+
       el.innerHTML = rows.map((r, i) =>
         `<div class="lb-row"><div>${i + 1}. ${escapeHtml(r.name)}${r.name === myName ? " (you)" : ""}</div><div><span class="pill">${r.score || 0}</span></div></div>`
       ).join("");
@@ -340,7 +414,6 @@
 
       document.getElementById("join-screen").style.display = "none";
       document.getElementById("quiz-container").style.display = "block";
-      document.getElementById("qtotal").textContent = quizData.length;
       document.getElementById("whoami").textContent = myName;
       document.getElementById("gamePill").textContent = gameCode;
       document.getElementById("scoreLive").textContent = "0";
@@ -354,7 +427,9 @@
 
     function loadQuestion() {
       answered = false;
-      document.getElementById("qnum").textContent = idx + 1;
+      document.getElementById("questionNumber").textContent = `${idx + 1}/${quizData.length}`;
+      document.getElementById("questionText").textContent = quizData[idx].q;
+
       const options = document.getElementById("options");
       options.innerHTML = "";
 
@@ -414,6 +489,7 @@
       awaitingFinalResults = false;
       const fx = document.getElementById("resultFX");
       const topScore = latestLeaderboard.reduce((max, player) => Math.max(max, player.score || 0), -Infinity);
+
       if (score === topScore) {
         confetti({ particleCount: 160, spread: 70, origin: { y: 0.6 } });
       } else {
