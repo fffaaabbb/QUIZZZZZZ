@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Londrina+Solid:wght@100;300;400;900&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
   <style>
     :root { --teal: #00fff0; --display-font: "Londrina Solid", Arial, sans-serif; }
     * { box-sizing: border-box; }
@@ -41,7 +40,8 @@
       box-shadow: none;
     }
 
-    h1, h2, #questionNumber, #questionText, #questionScore, .option, #score {
+    h1, h2, #questionNumber, #questionText, #questionScore, .option, #score,
+    .meta-label, .meta-value, .qbox-label, button {
       font-family: var(--display-font);
     }
 
@@ -50,7 +50,7 @@
       font-size: clamp(42px, 10vw, 64px);
       font-weight: 900;
       letter-spacing: .5px;
-      text-shadow: 0 0 12px var(--teal);
+      text-shadow: 0 0 6px var(--teal);
     }
 
     h2 { font-size: clamp(36px, 8vw, 54px); font-weight: 900; }
@@ -82,49 +82,97 @@
     .meta {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       gap: 10px;
       flex-wrap: wrap;
       max-width: 620px;
       margin: 0 auto 18px;
-      color: #d2f7f5;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .meta-label {
+      color: #9be9e4;
       font-size: 14px;
-      text-shadow: 0 1px 4px #000;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-shadow: 0 1px 3px #000;
+    }
+
+    .meta-value {
+      color: #fff;
+      font-family: var(--display-font);
+      font-size: clamp(18px, 3.2vw, 24px);
+      font-weight: 900;
+      letter-spacing: .5px;
+      text-shadow: 0 0 3px rgba(0,255,240,.5);
     }
 
     #questionBox {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 16px;
+      align-items: stretch;
+      gap: 14px;
       max-width: 620px;
-      min-height: 116px;
       margin: 0 auto 18px;
-      padding: 18px 22px;
-      color: #dffffd;
-      background: rgba(0, 30, 36, .72);
-      border: 2px solid var(--teal);
-      border-radius: 16px;
-      box-shadow: 0 0 7px rgba(0,255,240,.8), inset 0 0 18px rgba(0,255,240,.18);
     }
 
     #questionNumber, #questionScore {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      aspect-ratio: 1 / 1;
+      min-width: 74px;
       white-space: nowrap;
       color: var(--teal);
-      font-size: clamp(24px, 4vw, 32px);
+      background: rgba(0, 30, 36, .72);
+      border: 2px solid var(--teal);
+      border-radius: 14px;
+      font-size: clamp(24px, 4vw, 34px);
       font-weight: 900;
-      text-shadow: 0 0 7px var(--teal), 0 0 20px var(--teal);
+      text-shadow: 0 0 4px rgba(0,255,240,.6);
+      box-shadow: 0 0 4px rgba(0,255,240,.5), inset 0 0 10px rgba(0,255,240,.12);
     }
 
-    #questionScore { text-align: right; }
-
     #questionText {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       min-width: 0;
+      min-height: 74px;
+      padding: 14px 20px;
       color: #dffffd;
-      font-size: clamp(26px, 5vw, 38px);
+      background: rgba(0, 30, 36, .72);
+      border: 2px solid var(--teal);
+      border-radius: 14px;
+      font-size: clamp(22px, 4.5vw, 34px);
       font-weight: 900;
       line-height: 1.05;
       text-align: center;
-      text-shadow: 0 1px 5px #000;
+      text-shadow: 0 1px 3px rgba(0,0,0,.6);
+      box-shadow: 0 0 4px rgba(0,255,240,.5), inset 0 0 10px rgba(0,255,240,.12);
+    }
+
+    .qbox-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .qbox-label {
+      color: #9be9e4;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      text-shadow: 0 1px 3px #000;
     }
 
     ul { padding: 0; margin: 0; list-style: none; }
@@ -143,18 +191,18 @@
       align-items: center;
       justify-content: center;
       min-height: 0;
-      padding: 18px;
+      padding: 10px;
       cursor: pointer;
       user-select: none;
       color: var(--teal);
       background: rgba(0, 30, 36, .72);
       border: 2px solid var(--teal);
       border-radius: 16px;
-      font-size: clamp(56px, 13vw, 104px);
+      font-size: clamp(80px, 20vw, 150px);
       font-weight: 900;
       line-height: 1;
-      text-shadow: 0 0 3px var(--teal), 0 0 10px var(--teal);
-      box-shadow: 0 0 7px rgba(0,255,240,.8), inset 0 0 18px rgba(0,255,240,.18);
+      text-shadow: 0 0 4px rgba(0,255,240,.5);
+      box-shadow: 0 0 4px rgba(0,255,240,.5), inset 0 0 10px rgba(0,255,240,.12);
       transition: transform .12s, background .15s, color .15s, border-color .15s, box-shadow .15s;
     }
 
@@ -165,16 +213,16 @@
       color: #fff;
       background: #0b8f47;
       border-color: #47ff91;
-      text-shadow: 0 0 10px #baffd0;
-      box-shadow: 0 0 20px #20ff75, inset 0 0 25px rgba(255,255,255,.18);
+      text-shadow: 0 1px 3px rgba(0,0,0,.5);
+      box-shadow: 0 0 8px rgba(32,255,117,.5), inset 0 0 10px rgba(255,255,255,.1);
     }
 
     .option.incorrect {
       color: #fff;
       background: #a31529;
       border-color: #ff596c;
-      text-shadow: 0 0 10px #ffd0d5;
-      box-shadow: 0 0 20px #ff203d, inset 0 0 25px rgba(255,255,255,.18);
+      text-shadow: 0 1px 3px rgba(0,0,0,.5);
+      box-shadow: 0 0 8px rgba(255,32,61,.5), inset 0 0 10px rgba(255,255,255,.1);
     }
 
     .actions {
@@ -186,17 +234,26 @@
     }
 
     button {
-      padding: 11px 14px;
+      padding: 11px 18px;
       cursor: pointer;
       color: #fff;
       border: 0;
       border-radius: 10px;
-      font-weight: 600;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: .5px;
+      text-shadow: 0 1px 3px rgba(0,0,0,.4);
     }
 
     .primary { background: #00a99d; box-shadow: 0 0 12px rgba(0,255,240,.5); }
     .primary:disabled { cursor: not-allowed; background: #426361; box-shadow: none; }
     .secondary { background: rgba(0, 30, 36, .85); border: 1px solid rgba(0,255,240,.5); }
+
+    .big-btn {
+      padding: 16px 34px;
+      font-size: 24px;
+      border-radius: 14px;
+    }
 
     .field { display: grid; justify-content: center; gap: 6px; margin-top: 10px; }
 
@@ -225,19 +282,112 @@
       box-shadow: 0 6px 24px rgba(0, 0, 0, .28);
     }
 
+    #leaderboardTitle {
+      margin-bottom: 10px;
+      color: var(--teal);
+      font-family: var(--display-font);
+      font-size: clamp(22px, 4vw, 30px);
+      font-weight: 900;
+      letter-spacing: .5px;
+      text-shadow: 0 0 4px rgba(0,255,240,.6);
+    }
+
     #leaderboard { color: #e4ffff; font-size: 14px; line-height: 1.5; }
-    .lb-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.15); }
+    .lb-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 4px;
+      border-bottom: 1px solid rgba(255,255,255,.15);
+      font-family: var(--display-font);
+      font-size: clamp(16px, 2.6vw, 20px);
+      letter-spacing: .3px;
+    }
     .lb-row:last-child { border-bottom: 0; }
-    #resultFX { min-height: 70px; margin-top: 12px; }
+    #resultFX {
+      min-height: 70px;
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .victory-banner {
+      display: inline-block;
+      padding: 14px 36px;
+      background: rgba(0, 40, 45, .75);
+      border: 2px solid var(--teal);
+      border-radius: 999px;
+      box-shadow: 0 0 10px rgba(0,255,240,.6), inset 0 0 14px rgba(0,255,240,.15);
+      animation: victoryPop .5s ease-out, victoryPulse 1.6s ease-in-out .5s infinite;
+    }
+
+    .victory-banner span {
+      color: var(--teal);
+      font-family: var(--display-font);
+      font-size: clamp(28px, 6vw, 44px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-shadow: 0 0 6px rgba(0,255,240,.7);
+    }
+
+    @keyframes victoryPop {
+      0% { transform: scale(.6); opacity: 0; }
+      70% { transform: scale(1.08); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes victoryPulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(0,255,240,.6), inset 0 0 14px rgba(0,255,240,.15); }
+      50% { box-shadow: 0 0 22px rgba(0,255,240,.9), inset 0 0 22px rgba(0,255,240,.3); }
+    }
+
+    .victory-gif, .defeat-gif {
+      display: block;
+      width: min(320px, 80vw);
+      border: 2px solid var(--teal);
+      border-radius: 16px;
+      box-shadow: 0 0 14px rgba(0,255,240,.55);
+      animation: victoryPop .5s ease-out .15s both;
+    }
+
+    .defeat-gif { border-color: #ff596c; box-shadow: 0 0 14px rgba(255,89,108,.55); }
+
+    #finalLeaderboardBox {
+      max-width: 480px;
+      margin: 18px auto 0;
+      padding: 16px 18px;
+      background: rgba(5, 20, 27, .62);
+      border: 1px solid rgba(0, 255, 240, .22);
+      border-radius: 14px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, .28);
+      text-align: left;
+    }
+
+    #finalLeaderboardTitle {
+      margin-bottom: 8px;
+      color: var(--teal);
+      font-family: var(--display-font);
+      font-size: clamp(20px, 3.6vw, 26px);
+      font-weight: 900;
+      letter-spacing: .5px;
+      text-shadow: 0 0 4px rgba(0,255,240,.6);
+      text-align: center;
+    }
+
+    #finalLeaderboard { color: #e4ffff; font-size: 14px; line-height: 1.5; }
     #results { text-align: center; }
-    #score { margin: 8px 0; color: #fff; font-size: 56px; font-weight: 900; }
+    #score { margin: 8px 0; color: #fff; font-size: 56px; font-weight: 900; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
 
     @media (max-width: 560px) {
       body { padding: 12px; }
       #options { gap: 10px; }
       .option { padding: 10px; }
-      #questionBox { gap: 10px; min-height: 0; padding: 14px 12px; }
-      #questionNumber, #questionScore { font-size: 18px; }
+      #questionBox { gap: 10px; }
+      #questionNumber, #questionScore { font-size: 18px; min-width: 56px; }
       #questionText { font-size: 22px; }
     }
   </style>
@@ -267,33 +417,44 @@
   <div id="quiz-container" class="card">
     <div id="quiz">
       <div class="meta">
-        <div>Player <span id="whoami" class="pill"></span></div>
-        <div>Game <span id="gamePill" class="pill"></span></div>
+        <div class="meta-item"><span class="meta-label">Player</span><span id="whoami" class="meta-value"></span></div>
+        <div class="meta-item"><span class="meta-label">Game</span><span id="gamePill" class="meta-value"></span></div>
       </div>
 
       <div id="questionBox">
-        <div id="questionNumber">1/17</div>
+        <div class="qbox-col">
+          <div class="qbox-label">Question</div>
+          <div id="questionNumber">1/17</div>
+        </div>
         <div id="questionText">Question</div>
-        <div id="questionScore">Score <span id="scoreLive">0</span></div>
+        <div class="qbox-col">
+          <div class="qbox-label">Score</div>
+          <div id="questionScore"><span id="scoreLive">0</span></div>
+        </div>
       </div>
 
       <ul id="options"></ul>
 
       <div id="leaderboardBox">
-        <div style="font-weight:700; margin-bottom:6px;">Leaderboard</div>
+        <div id="leaderboardTitle">Leaderboard</div>
         <div id="leaderboard" class="small">Connecting...</div>
       </div>
 
       <div class="actions" style="justify-content:flex-end;">
         <button class="secondary" onclick="restart()">Restart</button>
-        <button id="nextBtn" class="primary" onclick="nextQuestion()" disabled>Next</button>
+        <button id="nextBtn" class="primary big-btn" onclick="nextQuestion()" disabled>Next</button>
       </div>
     </div>
 
     <div id="results">
       <h2>Finished!</h2>
       <div id="score"></div>
+      <div id="scoreSub" class="small"></div>
       <div id="resultFX"></div>
+      <div id="finalLeaderboardBox">
+        <div id="finalLeaderboardTitle">Final Scores</div>
+        <div id="finalLeaderboard"></div>
+      </div>
       <div class="actions"><button class="primary" onclick="restart()">Play again</button></div>
     </div>
   </div>
@@ -447,6 +608,14 @@
       socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx });
     }
 
+    function pointsForQuestion(questionIdx) {
+      const n = questionIdx + 1;
+      if (n <= 5) return 1;
+      if (n <= 10) return 2;
+      if (n <= 14) return 3;
+      return 4;
+    }
+
     function choose(optIndex, tile) {
       if (answered) return;
       answered = true;
@@ -454,7 +623,7 @@
       document.querySelectorAll("#options .option").forEach(item => item.classList.add("disabled"));
       if (optIndex === quizData[idx].correct) {
         tile.classList.add("correct");
-        score++;
+        score += pointsForQuestion(idx);
         document.getElementById("scoreLive").textContent = score;
       } else {
         tile.classList.add("incorrect");
@@ -471,10 +640,13 @@
       else loadQuestion();
     }
 
+    const MAX_POINTS = quizData.reduce((sum, _, i) => sum + pointsForQuestion(i), 0);
+
     function showResults() {
       document.getElementById("quiz").style.display = "none";
       document.getElementById("results").style.display = "block";
-      document.getElementById("score").textContent = `${score}/${quizData.length}`;
+      document.getElementById("score").textContent = `${score} pts`;
+      document.getElementById("scoreSub").textContent = `out of ${MAX_POINTS} points possible`;
       socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: quizData.length });
       awaitingFinalResults = true;
       setTimeout(checkWinners, 500);
@@ -491,10 +663,24 @@
       const topScore = latestLeaderboard.reduce((max, player) => Math.max(max, player.score || 0), -Infinity);
 
       if (score === topScore) {
-        confetti({ particleCount: 160, spread: 70, origin: { y: 0.6 } });
+        fx.innerHTML = '<div class="victory-banner"><span>YOU WIN</span></div><img class="victory-gif" src="https://lh3.googleusercontent.com/d/1lB7YHR5NfsAgTOpdpl-tkIacWPlgAmVZ" alt="Victory" />';
       } else {
-        fx.innerHTML = '<div style="color:#ff8490;font-weight:800;">Not #1 this time</div>';
+        fx.innerHTML = '<div style="color:#ff8490;font-weight:800;">Not #1 this time</div><img class="defeat-gif" src="https://lh3.googleusercontent.com/d/1nlvSLQN8ieX8_-pLQIUFQQ2_I10VmjDR" alt="Defeat" />';
       }
+
+      renderFinalLeaderboard();
+    }
+
+    function renderFinalLeaderboard() {
+      const el = document.getElementById("finalLeaderboard");
+      if (!el) return;
+
+      const rows = latestLeaderboard.length ? latestLeaderboard : [{ name: myName, score }];
+      const sorted = [...rows].sort((a, b) => (b.score || 0) - (a.score || 0));
+
+      el.innerHTML = sorted.map((r, i) =>
+        `<div class="lb-row"><div>${i + 1}. ${escapeHtml(r.name)}${r.name === myName ? " (you)" : ""}</div><div><span class="pill">${r.score || 0} pts</span></div></div>`
+      ).join("");
     }
 
     function restart() {
