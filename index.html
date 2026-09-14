@@ -205,7 +205,9 @@
 
     function startQuiz() {
       myName = (document.getElementById("playerName").value || "").trim(); saveName(myName);
-      if (!gameCode) { const enteredCode = normalizeGameCode(document.getElementById("gameInput").value); if (!enteredCode) { alert("Type game code like 12 34 56"); return; } gameCode = enteredCode; }
+      const enteredCode = normalizeGameCode(document.getElementById("gameInput").value);
+      if (!enteredCode) { alert("Type game code like 12 34 56"); return; }
+      gameCode = enteredCode;
       updateGameUI(); socket.emit("joinGame", { gameId: roomIdFromGameCode(gameCode), playerName: myName });
       document.getElementById("join-screen").style.display = "none"; document.getElementById("quiz-container").style.display = "block"; document.getElementById("whoami").textContent = myName; document.getElementById("gamePill").textContent = gameCode; document.getElementById("scoreLive").textContent = "0";
       idx = 0; score = 0; answered = false; latestLeaderboard = []; awaitingFinalResults = false; finalResultsShown = false; clearTimeout(finalCheckTimer); document.getElementById("finalLeaderboardBox").style.display = "none";
