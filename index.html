@@ -90,7 +90,6 @@
       button { padding: 7px 11px; font-size: 14px; }
       .big-btn { padding: 8px 17px; font-size: 18px; }
     }
-    #results { text-align: center; }
   </style>
 </head>
 <body>
@@ -113,7 +112,7 @@
   <div id="quiz-container" class="card">
     <div id="quiz">
       <div class="meta"><div class="meta-item"><span class="meta-label">Player</span><span id="whoami" class="meta-value"></span></div><div class="meta-item"><span class="meta-label">Game</span><span id="gamePill" class="meta-value"></span></div></div>
-      <div id="questionBox"><div class="qbox-col"><div class="qbox-label">Question</div><div id="questionNumber">1/17</div></div><div id="questionText">Question</div><div class="qbox-col"><div class="qbox-label">Score</div><div id="questionScore"><span id="scoreLive">0</span></div></div></div>
+      <div id="questionBox"><div class="qbox-col"><div class="qbox-label">Question</div><div id="questionNumber">1/20</div></div><div id="questionText">Question</div><div class="qbox-col"><div class="qbox-label">Score</div><div id="questionScore"><span id="scoreLive">0</span></div></div></div>
       <ul id="options"></ul>
       <div id="leaderboardBox"><div id="leaderboardTitle">Leaderboard</div><div id="leaderboard" class="small">Connecting...</div></div>
       <div class="actions" style="justify-content:flex-end;"><button class="secondary" onclick="restart()">Restart</button><button id="nextBtn" class="primary big-btn" onclick="nextQuestion()" disabled>Next</button></div>
@@ -122,7 +121,26 @@
   </div>
   <script>
     const quizData = [
-      { q: "What do you call a baby cat?", opts: ["Puppy", "Kitten", "Cub", "Foal"], correct: 1 }, { q: "Which animal is known as the King of the Jungle?", opts: ["Tiger", "Elephant", "Lion", "Leopard"], correct: 2 }, { q: "What is the fastest land animal?", opts: ["Lion", "Horse", "Cheetah", "Leopard"], correct: 2 }, { q: "Which animal has a very long neck?", opts: ["Elephant", "Giraffe", "Camel", "Zebra"], correct: 1 }, { q: "What animal builds dams in rivers?", opts: ["Otter", "Beaver", "Muskrat", "Platypus"], correct: 1 }, { q: "Which bird cannot fly?", opts: ["Eagle", "Parrot", "Penguin", "Hawk"], correct: 2 }, { q: "What is the largest land animal on Earth?", opts: ["Hippopotamus", "White Rhinoceros", "African Elephant", "Giraffe"], correct: 2 }, { q: "Which marine animal has three hearts?", opts: ["Shark", "Octopus", "Dolphin", "Whale"], correct: 1 }, { q: "Which reptile can change its skin color?", opts: ["Gecko", "Iguana", "Chameleon", "Komodo Dragon"], correct: 2 }, { q: "What is the only mammal capable of true flight?", opts: ["Flying Squirrel", "Bat", "Sugar Glider", "Colugo"], correct: 1 }, { q: "What is a marsupial's defining feature?", opts: ["Scales on body", "Pouch for young", "Webbed feet", "Retractable claws"], correct: 1 }, { q: "Which animal has the most complex eyes in nature?", opts: ["Eagle", "Mantis Shrimp", "Dragonfly", "Cat"], correct: 1 }, { q: "What is the venomous mammal that lays eggs?", opts: ["Hedgehog", "Shrew", "Platypus", "Mole"], correct: 2 }, { q: "Which bird has the longest migration route?", opts: ["Bar-tailed Godwit", "Arctic Tern", "Albatross", "Sooty Shearwater"], correct: 1 }, { q: "Which insect can lift 50 times its own body weight?", opts: ["Beetle", "Ant", "Grasshopper", "Wasp"], correct: 1 }, { q: "What animal has fingerprints similar to humans?", opts: ["Chimpanzee", "Gorilla", "Koala", "Orangutan"], correct: 2 }, { q: "Which animal has the longest lifespan recorded?", opts: ["Greenland Shark", "Ocean Quahog Clam", "Bowhead Whale", "Giant Tortoise"], correct: 0 }
+      { q: "What do you call a baby cat?", correct: 1, pts: 1 },
+      { q: "Which animal is known as the King of the Jungle?", correct: 2, pts: 1 },
+      { q: "Which animal has a very long neck?", correct: 1, pts: 1 },
+      { q: "Which bird cannot fly?", correct: 2, pts: 1 },
+      { q: "What is the fastest land animal?", correct: 2, pts: 1 },
+      { q: "What animal builds dams in rivers?", correct: 1, pts: 2 },
+      { q: "What is the largest land animal on Earth?", correct: 2, pts: 2 },
+      { q: "Which reptile can change its skin color?", correct: 2, pts: 2 },
+      { q: "What is the only mammal capable of true flight?", correct: 1, pts: 2 },
+      { q: "What is a marsupial's defining feature?", correct: 1, pts: 2 },
+      { q: "Which marine animal has three hearts?", correct: 1, pts: 3 },
+      { q: "Which animal has the most complex eyes in nature?", correct: 1, pts: 3 },
+      { q: "What is the venomous mammal that lays eggs?", correct: 2, pts: 3 },
+      { q: "Which insect can lift 50 times its own body weight?", correct: 1, pts: 3 },
+      { q: "Which bird has the longest migration route?", correct: 1, pts: 3 },
+      { q: "What animal has fingerprints similar to humans?", correct: 2, pts: 4 },
+      { q: "Which animal has the longest lifespan recorded?", correct: 0, pts: 4 },
+      { q: "Which animal can grow back a whole lost leg as an adult?", correct: 3, pts: 4 },
+      { q: "Which animal can go the longest without drinking water?", correct: 1, pts: 4 },
+      { q: "Which animal can change from male to female when it grows up?", correct: 0, pts: 4 }
     ];
     const SOCKET_SERVER_URL = "https://quiz-leaderboard-server-1.onrender.com";
     const cuteNames = ["Pink Flamingo", "Tiny Panda", "Happy Koala", "Baby Tiger", "Sunny Bunny", "Mimi Cat", "Blue Dolphin", "Star Penguin", "Lucky Zebra", "Peach Fox", "Moon Kitty", "Jelly Otter"];
@@ -142,11 +160,10 @@
     function mergeLeaderboard(rows) { if (!Array.isArray(rows)) return; const byName = new Map(latestLeaderboard.map(r => [String(r.name), r])); rows.forEach(r => { if (!r || !r.name) return; const key = String(r.name); const previous = byName.get(key) || {}; byName.set(key, { ...previous, ...r, score: Number.isFinite(Number(r.score)) ? Number(r.score) : (previous.score || 0) }); }); latestLeaderboard = [...byName.values()]; }
     function renderLeaderboard(rows) { const el = document.getElementById("leaderboard"); if (!el) return; if (!rows || !rows.length) { el.textContent = "No players yet."; return; } const sorted = [...rows].sort((a, b) => (b.score || 0) - (a.score || 0)); el.innerHTML = sorted.map((r, i) => `<div class="lb-row"><div>${i + 1}. ${escapeHtml(r.name)}${r.name === myName ? " (you)" : ""}</div><div><span class="pill">${r.score || 0}</span></div></div>`).join(""); }
     function startQuiz() { myName = (document.getElementById("playerName").value || "").trim(); saveName(myName); const enteredCode = normalizeGameCode(document.getElementById("gameInput").value); if (!enteredCode) { alert("Type game code like 12 34 56"); return; } gameCode = enteredCode; updateGameUI(); socket.emit("joinGame", { gameId: roomIdFromGameCode(gameCode), playerName: myName }); document.getElementById("join-screen").style.display = "none"; document.getElementById("quiz-container").style.display = "block"; document.getElementById("whoami").textContent = myName; document.getElementById("gamePill").textContent = gameCode; document.getElementById("scoreLive").textContent = "0"; idx = 0; score = 0; answered = false; latestLeaderboard = []; awaitingFinalResults = false; finalResultsShown = false; clearTimeout(finalCheckTimer); document.getElementById("finalLeaderboardBox").style.display = "none"; socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx }); loadQuestion(); }
-    function loadQuestion() { answered = false; document.getElementById("questionNumber").textContent = `${idx + 1}/${quizData.length}`; document.getElementById("questionText").textContent = quizData[idx].q; const options = document.getElementById("options"); options.innerHTML = ""; quizData[idx].opts.forEach((text, i) => { const tile = document.createElement("li"); tile.className = "option"; tile.title = text; tile.textContent = String.fromCharCode(65 + i); tile.addEventListener("click", () => choose(i, tile)); options.appendChild(tile); }); document.getElementById("nextBtn").disabled = true; document.getElementById("nextBtn").textContent = idx === quizData.length - 1 ? "Finish" : "Next"; socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx }); }
-    function pointsForQuestion(questionIdx) { const n = questionIdx + 1; if (n <= 5) return 1; if (n <= 10) return 2; if (n <= 14) return 3; return 4; }
-    function choose(optIndex, tile) { if (answered) return; answered = true; document.querySelectorAll("#options .option").forEach(item => item.classList.add("disabled")); if (optIndex === quizData[idx].correct) { tile.classList.add("correct"); score += pointsForQuestion(idx); document.getElementById("scoreLive").textContent = score; } else tile.classList.add("incorrect"); socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx }); document.getElementById("nextBtn").disabled = false; }
+    function loadQuestion() { answered = false; document.getElementById("questionNumber").textContent = `${idx + 1}/${quizData.length}`; document.getElementById("questionText").textContent = quizData[idx].q; const options = document.getElementById("options"); options.innerHTML = ""; ["A", "B", "C", "D"].forEach((letter, i) => { const tile = document.createElement("li"); tile.className = "option"; tile.textContent = letter; tile.addEventListener("click", () => choose(i, tile)); options.appendChild(tile); }); document.getElementById("nextBtn").disabled = true; document.getElementById("nextBtn").textContent = idx === quizData.length - 1 ? "Finish" : "Next"; socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx }); }
+    function choose(optIndex, tile) { if (answered) return; answered = true; document.querySelectorAll("#options .option").forEach(item => item.classList.add("disabled")); if (optIndex === quizData[idx].correct) { tile.classList.add("correct"); score += quizData[idx].pts; document.getElementById("scoreLive").textContent = score; } else tile.classList.add("incorrect"); socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: idx }); document.getElementById("nextBtn").disabled = false; }
     function nextQuestion() { if (!answered) return; idx++; if (idx >= quizData.length) showResults(); else loadQuestion(); }
-    const MAX_POINTS = quizData.reduce((sum, _, i) => sum + pointsForQuestion(i), 0);
+    const MAX_POINTS = quizData.reduce((sum, item) => sum + item.pts, 0);
     function showResults() { document.getElementById("quiz").style.display = "none"; document.getElementById("results").style.display = "block"; document.getElementById("score").textContent = `${score} pts`; document.getElementById("scoreSub").textContent = `out of ${MAX_POINTS} points possible`; document.getElementById("resultFX").innerHTML = '<div class="waiting-message"><span class="waiting-spinner"></span><span>Waiting for the other players to finish...</span></div>'; document.getElementById("finalLeaderboardBox").style.display = "none"; socket.emit("scoreUpdate", { gameId: roomIdFromGameCode(gameCode), playerName: myName, score, qIndex: quizData.length }); mergeLeaderboard([{ name: myName, score, qIndex: quizData.length }]); renderLeaderboard(latestLeaderboard); awaitingFinalResults = true; finalResultsShown = false; waitingStartedAt = Date.now(); scheduleFinalCheck(); }
     function allKnownPlayersFinished() { return latestLeaderboard.length > 0 && latestLeaderboard.every(r => Number(r.qIndex) >= quizData.length); }
     function scheduleFinalCheck() { if (!awaitingFinalResults || finalResultsShown) return; clearTimeout(finalCheckTimer); finalCheckTimer = setTimeout(checkWinners, 500); }
